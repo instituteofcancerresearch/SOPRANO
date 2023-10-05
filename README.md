@@ -25,6 +25,9 @@ SOPRANO can be run from the command line, or via a streamlit app interface.
 There are additional tools built within the SOPRANO installation that enable 
 users to download genomes, link existing VEP caches, and annotate VCF files.
 
+SOPRANO also run a randomization of the HLA alleles to estimate a distribution 
+of immune dN/dS values from your data.
+
 ## Documentation
 
 - [Installation](docs/INSTALL.md) - Building the environment and installing SOPRANO

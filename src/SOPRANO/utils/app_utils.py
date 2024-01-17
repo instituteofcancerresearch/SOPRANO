@@ -649,12 +649,38 @@ class RunTab:
         output_name: str,
         assembly: str,
     ):
-        anno_utils.annotate_source(
+        running_msg = st.warning(
+            "Annotation in progress ... please wait until this "
+            "process has finished."
+        )
+        all_annotated_paths = anno_utils.annotate_source(
             source_path=source_path,
             output_name=None if output_name == "" else output_name,
             cache_directory=Directories.app_annotated_inputs(),
             assembly=assembly,
         )
+
+        running_msg.empty()
+
+        n_header_lines = 5
+
+        for path in all_annotated_paths:
+            if path.exists():
+                st.success(f"Successful annotation: {path}")
+
+                head_lines = pd.read_csv(
+                    path, delimiter="\t", header=None
+                ).head(n_header_lines)
+
+                st.dataframe(head_lines)
+
+                with open(path, "r") as f:
+                    st.download_button(
+                        "Download Full Annotation", f, file_name=path.name
+                    )
+
+            else:
+                st.error(f"Failed annotation: {path}")
 
     @staticmethod
     def immunopeptidome(

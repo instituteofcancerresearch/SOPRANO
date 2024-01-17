@@ -1,7 +1,7 @@
+import subprocess
 from pathlib import Path
 
 from SOPRANO.utils.path_utils import Directories
-from SOPRANO.utils.sh_utils import pipe
 
 
 class NotVCF(Exception):
@@ -59,6 +59,13 @@ _RSCRIPTS_DIR = Directories.r_scripts()
 _VCF_PARSER_R_PATH = _RSCRIPTS_DIR / "parse_vcf.R"
 
 
+def strip_all_exts(path: Path):
+    while path != path.with_suffix(""):
+        path = path.with_suffix("")
+
+    return path
+
+
 def annotate_source(
     source_path: Path,
     assembly: str,
@@ -66,13 +73,24 @@ def annotate_source(
     cache_directory: Path = Directories.app_annotated_inputs(),
 ):
     vcf_paths = find_vcf_files(source_path)
+
+    single_annotation = len(vcf_paths) == 1
+
     target_filenames = [
         (v.with_suffix("").with_suffix(".vcf.anno")).name for v in vcf_paths
     ]
     target_paths = [cache_directory / tf for tf in target_filenames]
 
+    if output_name is None:
+        if single_annotation:
+            output_name = strip_all_exts(target_paths[0]).name
+        else:
+            raise ValueError(
+                "Output name must be defined for multiple VCF sources."
+            )
+
     for source, target in zip(vcf_paths, target_paths):
-        pipe(
+        subprocess.run(
             [
                 "Rscript",
                 _VCF_PARSER_R_PATH.as_posix(),
@@ -86,24 +104,31 @@ def annotate_source(
                 _RSCRIPTS_DIR.as_posix(),
                 "-o",
                 target.as_posix(),
-            ]
+            ],
+            capture_output=True,
         )
 
     output_path = cache_directory / f"{output_name}.vcf.anno"
 
-    if output_name is not None:
-        if len(vcf_paths) == 1:
-            target_paths[0].rename(output_path)
-        else:
-            print(f"-- building merged file: {output_path}")
+    if single_annotation:
+        target_paths[0].rename(output_path)
+    else:
+        print(f"-- building merged file: {output_path}")
 
-            with open(output_path, "w") as merged_file:
-                for written_path in target_paths:
-                    print(f"-> {written_path}")
-                    with open(written_path, "r") as g:
-                        lines = g.readlines()
+        with open(output_path, "w") as merged_file:
+            for written_path in target_paths:
+                print(f"-> merging {written_path}")
+                with open(written_path, "r") as g:
+                    lines = g.readlines()
 
-                    if written_path != target_paths[-1]:
-                        lines[-1] += "\n"
+                if written_path != target_paths[-1]:
+                    lines[-1] += "\n"
 
-                    merged_file.writelines(lines)
+                merged_file.writelines(lines)
+
+    if len(vcf_paths) > 1:
+        all_output_paths = target_paths + [output_path]
+    else:
+        all_output_paths = [output_path]
+
+    return all_output_paths

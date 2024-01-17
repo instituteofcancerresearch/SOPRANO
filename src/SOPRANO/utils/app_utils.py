@@ -161,7 +161,7 @@ class _PipelineUI:
 class PipelineUIOptions(_PipelineUI):
     @staticmethod
     def genome_reference():
-        homo_sapiens_dir = Directories.genomes_homo_sapiens()
+        homo_sapiens_dir = Directories.homo_sapien_reference_files()
 
         genome_dirs = [
             item for item in homo_sapiens_dir.glob("*") if item.is_dir()
@@ -192,7 +192,7 @@ class PipelineUIOptions(_PipelineUI):
     def annotated_mutations():
         options_dict = {}
         for directory in (
-            Directories.examples(),
+            Directories.annotation_example_files(),
             Directories.app_annotated_inputs(),
         ):
             for x in directory.glob("*.anno*"):
@@ -203,7 +203,7 @@ class PipelineUIOptions(_PipelineUI):
     def immunopeptidome():
         options_dict = {}
         for directory in (
-            Directories.immunopeptidomes_humans(),
+            Directories.immunopeptidome_example_files(),
             Directories.app_immunopeptidomes(),
         ):
             for x in directory.glob("*.bed"):
@@ -271,7 +271,7 @@ class PipelineUIProcessing(_PipelineUI):
             job_name_ready = False
             cache_dir = None
         else:
-            cache_dir = Directories.cache(job_name)
+            cache_dir = Directories.soprano_cache(job_name)
             st.text(f"Pipeline results cache: {cache_dir}")
             job_name_ready = True
         return job_name_ready, cache_dir
@@ -488,7 +488,9 @@ class _ImmunopeptidomeUI:
 class ImmunopeptidomesUIOptions(_ImmunopeptidomeUI):
     @staticmethod
     def hla_alleles():
-        hla_types_path = Directories.examples("TCGA_hlaTypesAll.tsv")
+        hla_types_path = Directories.immunopeptidome_aux_files(
+            "TCGA_hlaTypesAll.tsv"
+        )
         options = pipe(
             ["cut", "-f3", hla_types_path.as_posix()],
             ["tr", ",", "\n"],
@@ -498,7 +500,7 @@ class ImmunopeptidomesUIOptions(_ImmunopeptidomeUI):
 
     @staticmethod
     def transcript_ids():
-        hla_binders_path = Directories.data(
+        hla_binders_path = Directories.immunopeptidome_aux_files(
             "allhlaBinders_exprmean1.IEDBpeps.bed.unique_ids"
         )
 
@@ -516,40 +518,69 @@ class ImmunopeptidomeUIProcessing(_ImmunopeptidomeUI):
     @staticmethod
     def hla_alleles(alleles_selected: list):
         st.text(f"Selected: {sorted(alleles_selected)}")
-        return alleles_selected
+        alleles_ready = len(alleles_selected) > 0
+        return alleles_ready, alleles_selected
 
     @staticmethod
-    def transcript_ids(transcript_ids: list):
-        st.text(f"Selected: {sorted(transcript_ids)}")
-        return transcript_ids
+    def transcript_ids(transcript_ids: list | None):
+        if transcript_ids is None:
+            st.text("No transcript IDs selected.")
+            return True, []
+        else:
+            st.text(f"Selected: {sorted(transcript_ids)}")
+            ready = len(transcript_ids) > 0
+            return ready, transcript_ids
 
     @staticmethod
-    def subset_method(transcripts: list, method: str):
-        if len(transcripts) == 0 or method == "None":
-            st.text("No subset selected.")
-            return [], []
+    def subset_method(transcripts: list[str], method: str):
+        retained: list[str] = []
+        excluded: list[str] = []
+        if len(transcripts) > 0 and method == "None":
+            st.warning("Transcripts selected without filtering method choice.")
+            ready = False
+        elif len(transcripts) == 0 and method == "None":
+            st.text("No subset method required: no transcripts")
+            ready = True
         elif method == "Retention":
             st.text(f"Retaining subset of transcripts: {transcripts}")
-            return transcripts, []
+            ready = True
+            retained = transcripts
         elif method == "Exclusion":
             st.text(f"Excluding subset of transcripts: {transcripts}")
-            return [], transcripts
+            ready = True
+            excluded = transcripts
         else:
             raise ValueError(
                 f"Method does not belong to options: "
                 f"{ImmunopeptidomesUIOptions.subset_method()}"
             )
 
+        retained_excluded = retained, excluded
+
+        return ready, retained_excluded
+
     @staticmethod
     def name(name: str):
         if not name.endswith(".bed"):
             name += ".bed"
 
-        st.text(
-            f"Output file will be saved to "
-            f"{Directories.app_immunopeptidomes(name)}"
-        )
-        return name
+        output_path = Directories.app_immunopeptidomes(name)
+
+        st.text(f"Output file will be saved to {output_path}")
+
+        if name == ".bed":
+            st.warning("Immunopeptidome output name is required.")
+            ready = False
+        elif output_path.exists():
+            st.warning(
+                f"Output file already exists: {output_path}\n"
+                f"Please change or delete existing file"
+            )
+            ready = False
+        else:
+            ready = True
+
+        return ready, name
 
 
 class RunTab:
@@ -618,12 +649,38 @@ class RunTab:
         output_name: str,
         assembly: str,
     ):
-        anno_utils.annotate_source(
+        running_msg = st.warning(
+            "Annotation in progress ... please wait until this "
+            "process has finished."
+        )
+        all_annotated_paths = anno_utils.annotate_source(
             source_path=source_path,
             output_name=None if output_name == "" else output_name,
             cache_directory=Directories.app_annotated_inputs(),
             assembly=assembly,
         )
+
+        running_msg.empty()
+
+        n_header_lines = 5
+
+        for path in all_annotated_paths:
+            if path.exists():
+                st.success(f"Successful annotation: {path}")
+
+                head_lines = pd.read_csv(
+                    path, delimiter="\t", header=None
+                ).head(n_header_lines)
+
+                st.dataframe(head_lines)
+
+                with open(path, "r") as f:
+                    st.download_button(
+                        "Download Full Annotation", f, file_name=path.name
+                    )
+
+            else:
+                st.error(f"Failed annotation: {path}")
 
     @staticmethod
     def immunopeptidome(
@@ -632,8 +689,14 @@ class RunTab:
         transcripts_retained,
         transcripts_excluded,
     ):
+        n_header_lines = 5
+
+        running_msg = st.warning(
+            "Immunopeptidome processing in progress ... "
+            "please wait until this process has finished."
+        )
         try:
-            immunopeptidome_from_hla(
+            path = immunopeptidome_from_hla(
                 *hla_selections,
                 output_name=output_name,
                 restricted_transcript_ids=transcripts_retained,
@@ -642,8 +705,22 @@ class RunTab:
             st.text(
                 f"Completed: {Directories.app_immunopeptidomes(output_name)}"
             )
+            running_msg.empty()
+            st.success(f"Processed successfully: {path}")
+
+            head_lines = pd.read_csv(path, delimiter="\t", header=None).head(
+                n_header_lines
+            )
+
+            st.dataframe(head_lines)
+
+            with open(path, "r") as f:
+                st.download_button(
+                    "Download Full Immunopeptidome", f, file_name=path.name
+                )
+
         except RuntimeError:
-            st.warning(
+            st.error(
                 "Process failed with currently defined options. This was "
                 "likely caused by the selected HLA being unavailable in "
                 "the (filtered) transcript file."

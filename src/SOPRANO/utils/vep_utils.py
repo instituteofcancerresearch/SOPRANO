@@ -2,9 +2,8 @@ import argparse
 import pathlib
 from typing import List, Tuple
 
-from SOPRANO.utils import sh_utils
 from SOPRANO.utils.path_utils import Directories
-from SOPRANO.utils.sh_utils import pipe
+from SOPRANO.utils.url_utils import compute_fasta_index, compute_chrom_sizes
 
 
 def _get_src_dst_link_pairs(vep_cache: pathlib.Path):
@@ -33,7 +32,7 @@ def _get_src_dst_link_pairs(vep_cache: pathlib.Path):
         pathlib.Path(vr.parts[-2]).joinpath(vr.parts[-1]) for vr in src_dirs
     ]
 
-    dst_dirs = [Directories.data(sd) for sd in _src_dirs]
+    dst_dirs = [Directories.ensembl_downloads(sd) for sd in _src_dirs]
 
     src_dst_link_pairs = [
         (std_sys, soprano)
@@ -51,39 +50,27 @@ def _process(
     compute_chroms: bool,
 ):
     fa_glob = list(src_dir.glob(f"*dna.{pattern}*.fa"))
-    fai_glob = list(src_dir.glob(f"*dna.{pattern}*.fai"))
 
     src_fa_found = len(fa_glob) == 1
-    src_fai_found = len(fai_glob) == 1
 
-    if src_fa_found or src_fai_found:
+    if src_fa_found:
         if not dst_dir.exists():
             print(f"Building directory: {dst_dir}")
             dst_dir.mkdir(parents=True)
     else:
-        print(
-            f"No appropriate fasta or fasta index files detected in {src_dir} "
-            f"for {pattern}"
-        )
+        print(f"No fasta files detected in {src_dir}")
 
     if src_fa_found:
         src_fa = fa_glob[0]
         dst_fa = dst_dir.joinpath(src_fa.name)
-
         if not dst_fa.exists():
-            print(f"Sym linking {src_fa} -> {dst_fa}")
-            dst_fa.symlink_to(src_fa)
+            print(f"Linking {src_fa} -> {dst_fa}")
+            dst_fa.hardlink_to(src_fa)
 
-        dst_chrom = dst_fa.with_suffix(".chrom")
-        if not dst_chrom.exists() and compute_chroms:
-            print(f"Computing chrom sizes: {dst_chrom}")
-            pipe(["cut", "-f1,2", src_fa.as_posix()], output_path=dst_chrom)
+        dst_fai = compute_fasta_index(dst_fa)
 
-    if src_fai_found:
-        src_fai = fai_glob[0]
-        dst_fai = dst_dir.joinpath(src_fai.name)
-        print(f"Sym linking {src_fai} -> {dst_fai}")
-        dst_fai.symlink_to(src_fai)
+        if compute_chroms:
+            compute_chrom_sizes(dst_fai)
 
 
 def _link_src_dst_pairs(
@@ -139,44 +126,3 @@ def _link_vep_cache_parser():
         raise NotADirectoryError(src_cache)
 
     return src_cache
-
-
-def annotate_homo_sapiens(
-    input_file: pathlib.Path,
-    assembly="GRCh38",
-    output_file: pathlib.Path | None = None,
-    overwrite=False,
-    fasta_file=Directories.data("ensemble_transcriptID.translated.fasta"),
-):
-    # TODO: Complete and test ! This is place holding...
-
-    if output_file is None:
-        output_file = input_file.with_suffix(".anno")
-
-    sh_utils.pipe(
-        [
-            "vep",
-            "-i",
-            input_file.as_posix(),
-            "-o",
-            output_file.as_posix(),
-            "--cache",
-            "--dir_cache",
-            Directories.data().as_posix(),
-            "--assembly",
-            assembly,
-            "--all_refseq",
-            "--pick",
-            "--symbol",
-            "--no_stats",
-            "--force_overwrite",  # TODO: Fix optional
-            "--fasta",
-            fasta_file.as_posix(),
-        ]
-    )
-
-
-if __name__ == "__main__":
-    # Check annotation procedure on vcf input
-    test_input = Directories.examples("homo_sapiens_GRCh38.vcf")
-    annotate_homo_sapiens(test_input)

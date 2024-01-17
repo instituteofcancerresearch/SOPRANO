@@ -649,12 +649,38 @@ class RunTab:
         output_name: str,
         assembly: str,
     ):
-        anno_utils.annotate_source(
+        running_msg = st.warning(
+            "Annotation in progress ... please wait until this "
+            "process has finished."
+        )
+        all_annotated_paths = anno_utils.annotate_source(
             source_path=source_path,
             output_name=None if output_name == "" else output_name,
             cache_directory=Directories.app_annotated_inputs(),
             assembly=assembly,
         )
+
+        running_msg.empty()
+
+        n_header_lines = 5
+
+        for path in all_annotated_paths:
+            if path.exists():
+                st.success(f"Successful annotation: {path}")
+
+                head_lines = pd.read_csv(
+                    path, delimiter="\t", header=None
+                ).head(n_header_lines)
+
+                st.dataframe(head_lines)
+
+                with open(path, "r") as f:
+                    st.download_button(
+                        "Download Full Annotation", f, file_name=path.name
+                    )
+
+            else:
+                st.error(f"Failed annotation: {path}")
 
     @staticmethod
     def immunopeptidome(
@@ -663,8 +689,14 @@ class RunTab:
         transcripts_retained,
         transcripts_excluded,
     ):
+        n_header_lines = 5
+
+        running_msg = st.warning(
+            "Immunopeptidome processing in progress ... "
+            "please wait until this process has finished."
+        )
         try:
-            immunopeptidome_from_hla(
+            path = immunopeptidome_from_hla(
                 *hla_selections,
                 output_name=output_name,
                 restricted_transcript_ids=transcripts_retained,
@@ -673,8 +705,22 @@ class RunTab:
             st.text(
                 f"Completed: {Directories.app_immunopeptidomes(output_name)}"
             )
+            running_msg.empty()
+            st.success(f"Processed successfully: {path}")
+
+            head_lines = pd.read_csv(path, delimiter="\t", header=None).head(
+                n_header_lines
+            )
+
+            st.dataframe(head_lines)
+
+            with open(path, "r") as f:
+                st.download_button(
+                    "Download Full Immunopeptidome", f, file_name=path.name
+                )
+
         except RuntimeError:
-            st.warning(
+            st.error(
                 "Process failed with currently defined options. This was "
                 "likely caused by the selected HLA being unavailable in "
                 "the (filtered) transcript file."

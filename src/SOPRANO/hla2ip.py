@@ -133,3 +133,5 @@ def immunopeptidome_from_hla(
     tmp_path = output_path.with_suffix(".tmp")
     tmp_path.unlink(missing_ok=True)
     print(f"All done: {output_path.as_posix()}")
+
+    return output_path

@@ -13,7 +13,6 @@ from SOPRANO.utils.app_utils import (
     PipelineUIOptions,
     PipelineUIProcessing,
     _lines_ok,
-    _select_from_dict,
     process_text_and_file_inputs,
 )
 from SOPRANO.utils.path_utils import _SOPRANO_DEFAULT_CACHE, Directories
@@ -74,11 +73,6 @@ def _check_options_generator(method, directory: Path, extension: str):
         assert c._fail_ext.name not in options
         with pytest.raises(KeyError):
             assert options[c._fail_ext.name] == c._fail_ext
-
-
-def test__select_from_dict():
-    k, v = "foo", "bar"
-    assert _select_from_dict(k, {k: v}) == v
 
 
 def test_pipeline_options_genome_reference(mock_genome_dir):

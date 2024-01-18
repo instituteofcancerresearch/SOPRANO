@@ -125,12 +125,6 @@ def st_capture(output_func):
         yield
 
 
-def _select_from_dict(selection: str, selection_dict: dict):
-    selection_value = selection_dict[selection]
-    # st.text(f"Selected: {selection_value}")
-    return selection_value
-
-
 class _PipelineUI:
     @staticmethod
     def genome_reference(*args, **kwargs):

@@ -35,14 +35,17 @@ def process_text_and_file_inputs(
     remove_empty_lines=True,
 ):
     if raw_input is None:
-        return False, None
+        return False, []
     elif isinstance(raw_input, str):
         if raw_input == "":
-            return False, None
+            return False, []
         else:
             lines = raw_input.split("\n")
-    else:
+    elif isinstance(raw_input, UploadedFile):
         lines = StringIO(raw_input.getvalue().decode("utf-8")).readlines()
+    else:
+        raise TypeError(raw_input)
+
     lines = [line.strip() for line in lines]
 
     if remove_empty_lines:
@@ -486,6 +489,9 @@ class _ImmunopeptidomeUI:
 
 
 class ImmunopeptidomesUIOptions(_ImmunopeptidomeUI):
+    SUBSET_METHOD_OPTION_RETAIN = "Retain only the chosen transcript IDs"
+    SUBSET_METHOD_OPTION_EXCLUDE = "Exclude all the chosen transcript IDs"
+
     @staticmethod
     def hla_alleles():
         hla_types_path = Directories.immunopeptidome_aux_files(
@@ -511,7 +517,10 @@ class ImmunopeptidomesUIOptions(_ImmunopeptidomeUI):
 
     @staticmethod
     def subset_method():
-        return "None", "Retention", "Exclusion"
+        return (
+            ImmunopeptidomesUIOptions.SUBSET_METHOD_OPTION_RETAIN,
+            ImmunopeptidomesUIOptions.SUBSET_METHOD_OPTION_EXCLUDE,
+        )
 
 
 class ImmunopeptidomeUIProcessing(_ImmunopeptidomeUI):
@@ -535,17 +544,14 @@ class ImmunopeptidomeUIProcessing(_ImmunopeptidomeUI):
     def subset_method(transcripts: list[str], method: str):
         retained: list[str] = []
         excluded: list[str] = []
-        if len(transcripts) > 0 and method == "None":
-            st.warning("Transcripts selected without filtering method choice.")
+        if len(transcripts) < 1:
+            st.warning("No transcripts currently defined.")
             ready = False
-        elif len(transcripts) == 0 and method == "None":
-            st.text("No subset method required: no transcripts")
-            ready = True
-        elif method == "Retention":
+        elif method == ImmunopeptidomesUIOptions.SUBSET_METHOD_OPTION_RETAIN:
             st.text(f"Retaining subset of transcripts: {transcripts}")
             ready = True
             retained = transcripts
-        elif method == "Exclusion":
+        elif method == ImmunopeptidomesUIOptions.SUBSET_METHOD_OPTION_EXCLUDE:
             st.text(f"Excluding subset of transcripts: {transcripts}")
             ready = True
             excluded = transcripts

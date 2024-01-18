@@ -17,7 +17,7 @@ from SOPRANO.utils.app_utils import (
     PipelineUIOptions,
     PipelineUIProcessing,
     RunTab,
-    text_or_file,
+    process_text_and_file_inputs,
 )
 from SOPRANO.utils.path_utils import Directories
 
@@ -364,72 +364,71 @@ def with_tab_immunopeptidome(tab: DeltaGenerator):
             hla_alleles_processed,
         ) = ImmunopeptidomeUIProcessing.hla_alleles(hla_alleles_selected)
 
-        st.header("Ensembl transcript selections")
-
-        st.markdown(
-            "Analyses can be further restricted by providing a set of "
-            "Ensembl transcript IDs to either\n\n"
-            "1. Exclude from the analysis; or\n"
-            "2. Restrict the analysis to.\n\n"
-            "These filtering characteristics are presented as the choices\n"
-            "1 Retention\n"
-            "2 Exclusion\n\n"
-            "in the following drop down menu.\n\n"
-            "Transcript IDs should either be manually entered into the text "
-            "box over separate lines, or uploaded within a text file of "
-            "similar contents."
+        filter_by_transcript = st.checkbox(
+            "Filter by ensembl transcript IDs?", value=False
         )
 
-        # TODO: Change to switch option to display uploader/text input
-        initial_transcripts_ready, initial_transcript_selected = text_or_file(
-            "Define the Ensembl transcript IDs to restrict or exclude from the"
-            " immunopeptidome construction.",
-            help_text="Provide transcript IDs on separate lines.",
-            help_upload="Select a text file defining transcript IDs on "
-            "separate lines.",
-        )
+        if filter_by_transcript:
+            st.header("Ensembl transcript selections")
 
-        (
-            transcripts_processed_ready,
-            transcripts_processed,
-        ) = ImmunopeptidomeUIProcessing.transcript_ids(
-            initial_transcript_selected,
-        )
+            transcript_supply_method = st.radio(
+                "Select a method to define transcript IDs:",
+                options=("File uploader", "Text box"),
+            )
 
-        subset_method_selected = st.selectbox(
-            "Select method to subset available Ensembl transcript IDs "
-            "(optional):",
-            options=ImmunopeptidomesUIOptions.subset_method(),
-        )
+            if transcript_supply_method == "File uploader":
+                raw_transcript_input = st.file_uploader(
+                    "Upload a file containing ensembl "
+                    "transcript IDs over separate lines: ",
+                )
+            else:
+                _raw_transcript_input = st.text_area(
+                    "Enter ensembl transcript IDs " "over separate lines:",
+                    value="",
+                )
 
-        (
-            subset_ready,
-            retained_excluded,
-        ) = ImmunopeptidomeUIProcessing.subset_method(
-            transcripts_processed, subset_method_selected
-        )
+                if _raw_transcript_input:
+                    raw_transcript_input = _raw_transcript_input
+                else:
+                    raw_transcript_input = None
 
-        transcripts_ready = transcripts_processed_ready and subset_ready
+            (
+                processed_transcripts_ready,
+                processed_transcript_input,
+            ) = process_text_and_file_inputs(raw_transcript_input)
 
+            subset_method_selected = st.radio(
+                "Select method to subset available Ensembl transcript IDs:",
+                options=ImmunopeptidomesUIOptions.subset_method(),
+            )
+
+            (
+                subset_ready,
+                retained_excluded,
+            ) = ImmunopeptidomeUIProcessing.subset_method(
+                processed_transcript_input, subset_method_selected
+            )
+
+        else:
+            processed_transcripts_ready = True
+            subset_ready = True
+            retained_excluded = [], []
+
+        transcripts_ready = processed_transcripts_ready and subset_ready
         transcripts_retained, transcripts_excluded = retained_excluded
-
-        st.markdown(
-            "Once you are happy with your immunopeptidome choices, "
-            "provide a name for the corresponding file, then click "
-            "'Build immunopeptidome'."
-        )
 
         name_selected = st.text_input("Immunopeptidome name:")
         name_ready, name_processed = ImmunopeptidomeUIProcessing.name(
             name_selected
         )
 
-        selections_ready = hla_alleles_ready or transcripts_ready
+        selections_ready = hla_alleles_ready and transcripts_ready
 
         if not selections_ready:
             st.warning(
-                "Please provide a set of alleles of transcript IDs to "
-                "construct the restricted immunopeptidome input file."
+                "Please provide a set of alleles (and transcript IDs if "
+                "relevant) to construct the restricted immunopeptidome "
+                "input file."
             )
 
         if not name_ready:

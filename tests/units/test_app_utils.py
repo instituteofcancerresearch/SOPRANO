@@ -241,7 +241,10 @@ def test_immunopeptidome_options_transcript_ids():
 
 
 def test_immunopeptidome_options_subset_method():
-    expected = {"None", "Retention", "Exclusion"}
+    expected = {
+        ImmunopeptidomesUIOptions.SUBSET_METHOD_OPTION_RETAIN,
+        ImmunopeptidomesUIOptions.SUBSET_METHOD_OPTION_EXCLUDE,
+    }
 
     assert set(ImmunopeptidomesUIOptions.subset_method()) == expected
 
@@ -268,10 +271,14 @@ def test_immunopeptidome_processing_transcript_ids():
 
 
 # Feedstock for test immunopeptidome processing
-transcript_inputs = [[1, 2, 3], [1, 2], [1, 2]]
-method_inputs = ["None", "Retention", "Exclusion"]
-ready_outputs = [False, True, True]
-retained_excluded_outputs = [([], []), ([1, 2], []), ([], [1, 2])]
+transcript_inputs = [[1, 2], [1, 2], []]
+method_inputs = [
+    ImmunopeptidomesUIOptions.SUBSET_METHOD_OPTION_RETAIN,
+    ImmunopeptidomesUIOptions.SUBSET_METHOD_OPTION_EXCLUDE,
+    ImmunopeptidomesUIOptions.SUBSET_METHOD_OPTION_EXCLUDE,
+]
+ready_outputs = [True, True, False]
+retained_excluded_outputs = [([1, 2], []), ([], [1, 2]), ([], [])]
 _test_values = list(
     zip(
         transcript_inputs,

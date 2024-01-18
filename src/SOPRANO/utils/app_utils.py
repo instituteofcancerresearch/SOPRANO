@@ -1,5 +1,6 @@
 import os
 import pathlib
+import shutil
 from contextlib import contextmanager, redirect_stdout
 from io import StringIO
 from time import time
@@ -298,24 +299,6 @@ class PipelineUIProcessing(_PipelineUI):
         return cache_ready, cache_selected
 
 
-class _LinkVEPUI:
-    @staticmethod
-    def cache_location(*args, **kwargs):
-        pass
-
-
-class LinkVEPUIOptions(_LinkVEPUI):
-    pass
-
-
-class LinkVEPUIProcessing(_LinkVEPUI):
-    @staticmethod
-    def cache_location(cache_location: str):
-        output = pathlib.Path(cache_location)
-        st.text(f"Selected: {output}")
-        return output
-
-
 class _DownloaderUI:
     @staticmethod
     def species(*args, **kwargs):
@@ -331,6 +314,10 @@ class _DownloaderUI:
 
     @staticmethod
     def type(*args, **kwargs):
+        pass
+
+    @staticmethod
+    def cache_location(*args, **kwargs):
         pass
 
 
@@ -378,6 +365,18 @@ class DownloaderUIProcessing(_DownloaderUI):
 
         st.text(f"Selected: {type_selection}")
         return type_selection
+
+    @staticmethod
+    def cache_location(cache_location: str):
+        output = pathlib.Path(cache_location)
+
+        ready = output.exists()
+
+        if not ready:
+            st.warning(f"Cache directory does not exist: {cache_location}")
+        else:
+            st.text(f"Selected: {output}")
+        return ready, output
 
 
 class _AnnotatorUI:
@@ -761,3 +760,17 @@ class RunTab:
                 "likely caused by the selected HLA being unavailable in "
                 "the (filtered) transcript file."
             )
+
+
+class AnnoCache:
+    def __init__(self):
+        self.path = pathlib.Path("/tmp") / "soprano-anno"
+        try:
+            self.clean_up()
+        except FileNotFoundError:
+            pass
+        finally:
+            self.path.mkdir(exist_ok=True)
+
+    def clean_up(self):
+        shutil.rmtree(self.path)

@@ -1,19 +1,18 @@
 import os
 import pathlib
-import shutil
 
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
 
 from SOPRANO.core import objects
 from SOPRANO.utils.app_utils import (
+    AnnoCache,
     AnnotatorUIOptions,
     AnnotatorUIProcessing,
     DownloaderUIOptions,
     DownloaderUIProcessing,
     ImmunopeptidomesUIOptions,
     ImmunopeptidomeUIProcessing,
-    LinkVEPUIProcessing,
     PipelineUIOptions,
     PipelineUIProcessing,
     RunTab,
@@ -165,11 +164,14 @@ def with_tab_genomes(tab: DeltaGenerator):
             "VEP cache location:", value=Directories.std_sys_vep().as_posix()
         )
 
-        cache_location_processed = LinkVEPUIProcessing.cache_location(
-            cache_location_selection
-        )
+        (
+            cache_location_ready,
+            cache_location_processed,
+        ) = DownloaderUIProcessing.cache_location(cache_location_selection)
 
-        if st.button("Attempt VEP cache link", disabled=False):
+        if st.button(
+            "Attempt VEP cache link", disabled=not cache_location_ready
+        ):
             RunTab.link_vep(cache_location_processed)
 
         st.subheader("Download new reference genome files")
@@ -230,20 +232,6 @@ def with_tab_genomes(tab: DeltaGenerator):
                 release=release_processed,
                 download_type=type_processed,
             )
-
-
-class AnnoCache:
-    def __init__(self):
-        self.path = pathlib.Path("/tmp") / "soprano-anno"
-        try:
-            self.clean_up()
-        except FileNotFoundError:
-            pass
-        finally:
-            self.path.mkdir(exist_ok=True)
-
-    def clean_up(self):
-        shutil.rmtree(self.path)
 
 
 def with_tab_annotator(tab: DeltaGenerator):

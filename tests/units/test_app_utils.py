@@ -9,7 +9,6 @@ from SOPRANO.utils.app_utils import (
     DownloaderUIProcessing,
     ImmunopeptidomesUIOptions,
     ImmunopeptidomeUIProcessing,
-    LinkVEPUIProcessing,
     PipelineUIOptions,
     PipelineUIProcessing,
     _lines_ok,
@@ -192,7 +191,10 @@ def test_pipeline_processing_job_name():
 
 def test_vep_processing_cache_location():
     test_loc = Path.cwd()
-    assert LinkVEPUIProcessing.cache_location(test_loc.as_posix()) == test_loc
+    assert DownloaderUIProcessing.cache_location(test_loc.as_posix()) == (
+        True,
+        test_loc,
+    )
 
 
 def test_downloader_options_type():

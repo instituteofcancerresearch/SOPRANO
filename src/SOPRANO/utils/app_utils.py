@@ -329,9 +329,15 @@ class _DownloaderUI:
 
 
 class DownloaderUIOptions(_DownloaderUI):
+    OPTION_TYPE_TOPLEVEL = "toplevel"
+    OPTION_TYPE_PRIMARY_ASSEMBLY = "primary_assembly"
+
     @staticmethod
     def type():
-        return "toplevel", "primary_assembly"
+        return (
+            DownloaderUIOptions.OPTION_TYPE_TOPLEVEL,
+            DownloaderUIOptions.OPTION_TYPE_PRIMARY_ASSEMBLY,
+        )
 
 
 class DownloaderUIProcessing(_DownloaderUI):
@@ -358,7 +364,10 @@ class DownloaderUIProcessing(_DownloaderUI):
 
     @staticmethod
     def type(type_selection: str):
-        if type_selection not in ("toplevel", "primary_assembly"):
+        if type_selection not in (
+            DownloaderUIOptions.OPTION_TYPE_TOPLEVEL,
+            DownloaderUIOptions.OPTION_TYPE_PRIMARY_ASSEMBLY,
+        ):
             raise ValueError(type_selection)
 
         st.text(f"Selected: {type_selection}")
@@ -388,13 +397,25 @@ class _AnnotatorUI:
 
 
 class AnnotatorUIOptions(_AnnotatorUI):
+    OPTION_VCF_DEF_METHOD_SYS_PATH = "System path"
+    OPTION_VCF_DEF_METHOD_UPLOADER = "File uploader"
+
+    OPTION_ASSEMBLY_TYPE_38 = "GRCh38"
+    OPTION_ASSEMBLY_TYPE_37 = "GRCh37"
+
     @staticmethod
     def vcf_definition_method():
-        return "System path", "File uploader"
+        return (
+            AnnotatorUIOptions.OPTION_VCF_DEF_METHOD_SYS_PATH,
+            AnnotatorUIOptions.OPTION_VCF_DEF_METHOD_UPLOADER,
+        )
 
     @staticmethod
     def assembly_type():
-        return "GRCh38", "GRCh37"
+        return (
+            AnnotatorUIOptions.OPTION_ASSEMBLY_TYPE_38,
+            AnnotatorUIOptions.OPTION_ASSEMBLY_TYPE_37,
+        )
 
 
 class AnnotatorUIProcessing(_AnnotatorUI):
@@ -425,7 +446,10 @@ class AnnotatorUIProcessing(_AnnotatorUI):
 
     @staticmethod
     def assembly_type(genome_assembly_selection: str):
-        if genome_assembly_selection in ("GRCh38", "GRCh37"):
+        if genome_assembly_selection in (
+            AnnotatorUIOptions.OPTION_ASSEMBLY_TYPE_38,
+            AnnotatorUIOptions.OPTION_ASSEMBLY_TYPE_37,
+        ):
             assembly_ready = True
         else:
             st.warning("Currently only supporting GRCh38 and GRCh37.")
@@ -489,8 +513,8 @@ class _ImmunopeptidomeUI:
 
 
 class ImmunopeptidomesUIOptions(_ImmunopeptidomeUI):
-    SUBSET_METHOD_OPTION_RETAIN = "Retain only the chosen transcript IDs"
-    SUBSET_METHOD_OPTION_EXCLUDE = "Exclude all the chosen transcript IDs"
+    OPTION_SUBSET_METHOD_RETAIN = "Retain only the chosen transcript IDs"
+    OPTION_SUBSET_METHOD_EXCLUDE = "Exclude all the chosen transcript IDs"
 
     @staticmethod
     def hla_alleles():
@@ -518,8 +542,8 @@ class ImmunopeptidomesUIOptions(_ImmunopeptidomeUI):
     @staticmethod
     def subset_method():
         return (
-            ImmunopeptidomesUIOptions.SUBSET_METHOD_OPTION_RETAIN,
-            ImmunopeptidomesUIOptions.SUBSET_METHOD_OPTION_EXCLUDE,
+            ImmunopeptidomesUIOptions.OPTION_SUBSET_METHOD_RETAIN,
+            ImmunopeptidomesUIOptions.OPTION_SUBSET_METHOD_EXCLUDE,
         )
 
 
@@ -547,11 +571,11 @@ class ImmunopeptidomeUIProcessing(_ImmunopeptidomeUI):
         if len(transcripts) < 1:
             st.warning("No transcripts currently defined.")
             ready = False
-        elif method == ImmunopeptidomesUIOptions.SUBSET_METHOD_OPTION_RETAIN:
+        elif method == ImmunopeptidomesUIOptions.OPTION_SUBSET_METHOD_RETAIN:
             st.text(f"Retaining subset of transcripts: {transcripts}")
             ready = True
             retained = transcripts
-        elif method == ImmunopeptidomesUIOptions.SUBSET_METHOD_OPTION_EXCLUDE:
+        elif method == ImmunopeptidomesUIOptions.OPTION_SUBSET_METHOD_EXCLUDE:
             st.text(f"Excluding subset of transcripts: {transcripts}")
             ready = True
             excluded = transcripts

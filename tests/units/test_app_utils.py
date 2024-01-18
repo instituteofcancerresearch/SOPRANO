@@ -242,8 +242,8 @@ def test_immunopeptidome_options_transcript_ids():
 
 def test_immunopeptidome_options_subset_method():
     expected = {
-        ImmunopeptidomesUIOptions.SUBSET_METHOD_OPTION_RETAIN,
-        ImmunopeptidomesUIOptions.SUBSET_METHOD_OPTION_EXCLUDE,
+        ImmunopeptidomesUIOptions.OPTION_SUBSET_METHOD_RETAIN,
+        ImmunopeptidomesUIOptions.OPTION_SUBSET_METHOD_EXCLUDE,
     }
 
     assert set(ImmunopeptidomesUIOptions.subset_method()) == expected
@@ -273,9 +273,9 @@ def test_immunopeptidome_processing_transcript_ids():
 # Feedstock for test immunopeptidome processing
 transcript_inputs = [[1, 2], [1, 2], []]
 method_inputs = [
-    ImmunopeptidomesUIOptions.SUBSET_METHOD_OPTION_RETAIN,
-    ImmunopeptidomesUIOptions.SUBSET_METHOD_OPTION_EXCLUDE,
-    ImmunopeptidomesUIOptions.SUBSET_METHOD_OPTION_EXCLUDE,
+    ImmunopeptidomesUIOptions.OPTION_SUBSET_METHOD_RETAIN,
+    ImmunopeptidomesUIOptions.OPTION_SUBSET_METHOD_EXCLUDE,
+    ImmunopeptidomesUIOptions.OPTION_SUBSET_METHOD_EXCLUDE,
 ]
 ready_outputs = [True, True, False]
 retained_excluded_outputs = [([1, 2], []), ([], [1, 2]), ([], [])]

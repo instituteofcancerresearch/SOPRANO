@@ -227,7 +227,7 @@ class PipelineUIOptions(_PipelineUI):
 
     @staticmethod
     def coordinates():
-        options_dict = {None: None}
+        options_dict = {}
         for x in Directories.app_coordinate_files().glob("*.bed"):
             options_dict[x.name] = x
         return options_dict
@@ -259,12 +259,12 @@ class PipelineUIProcessing(_PipelineUI):
     @staticmethod
     def annotated_mutations(annotation_selection: str):
         options_dict = PipelineUIOptions.annotated_mutations()
-        return True, _select_from_dict(annotation_selection, options_dict)
+        return True, options_dict[annotation_selection]
 
     @staticmethod
     def immunopeptidome(immunopeptidome_selection: str):
         options_dict = PipelineUIOptions.immunopeptidome()
-        return True, _select_from_dict(immunopeptidome_selection, options_dict)
+        return True, options_dict[immunopeptidome_selection]
 
     @staticmethod
     def substitution_method(subs_selection: str):
@@ -278,7 +278,7 @@ class PipelineUIProcessing(_PipelineUI):
     @staticmethod
     def coordinates(coordinates_selection: str):
         options_dict = PipelineUIOptions.coordinates()
-        return True, _select_from_dict(coordinates_selection, options_dict)
+        return True, options_dict.get(coordinates_selection, None)
 
     @staticmethod
     def job_name(job_name: str):

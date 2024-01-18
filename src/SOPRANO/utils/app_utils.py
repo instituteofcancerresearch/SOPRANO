@@ -162,6 +162,9 @@ class _PipelineUI:
 
 
 class PipelineUIOptions(_PipelineUI):
+    OPTION_SUBS_METHOD_SSB7 = "SSB7"
+    OPTION_SUBS_METHOD_SSB192 = "SSB192"
+
     @staticmethod
     def genome_reference():
         homo_sapiens_dir = Directories.homo_sapien_reference_files()
@@ -189,6 +192,8 @@ class PipelineUIOptions(_PipelineUI):
             name: dir_path for name, dir_path in zip(genome_ids, genome_dirs)
         }
 
+        # Note: Dictionary keys are presented as options in the UI!
+
         return options_dict
 
     @staticmethod
@@ -215,7 +220,10 @@ class PipelineUIOptions(_PipelineUI):
 
     @staticmethod
     def substitution_method():
-        return {"SSB192": 192, "SSB7": 7}
+        return (
+            PipelineUIOptions.OPTION_SUBS_METHOD_SSB192,
+            PipelineUIOptions.OPTION_SUBS_METHOD_SSB7,
+        )
 
     @staticmethod
     def coordinates():
@@ -260,8 +268,12 @@ class PipelineUIProcessing(_PipelineUI):
 
     @staticmethod
     def substitution_method(subs_selection: str):
-        options_dict = PipelineUIOptions.substitution_method()
-        return True, _select_from_dict(subs_selection, options_dict)
+        if subs_selection == PipelineUIOptions.OPTION_SUBS_METHOD_SSB192:
+            return True, 192
+        elif subs_selection == PipelineUIOptions.OPTION_SUBS_METHOD_SSB7:
+            return True, 7
+        else:
+            raise ValueError(f"Unrecognized method: {subs_selection}")
 
     @staticmethod
     def coordinates(coordinates_selection: str):

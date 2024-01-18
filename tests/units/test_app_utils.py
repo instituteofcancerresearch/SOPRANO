@@ -111,8 +111,11 @@ def test_pipeline_options_immunopeptidome():
 
 
 def test_pipeline_options_substitution_method():
-    for v in (192, 7):
-        assert v in PipelineUIOptions.substitution_method().values()
+    for v in (
+        PipelineUIOptions.OPTION_SUBS_METHOD_SSB192,
+        PipelineUIOptions.OPTION_SUBS_METHOD_SSB7,
+    ):
+        assert v in PipelineUIOptions.substitution_method()
 
 
 def test_pipeline_options_coordinates():
@@ -172,7 +175,7 @@ def test_pipeline_processing_substitution_method():
     condition, processed_7 = PipelineUIProcessing.substitution_method("SSB7")
     assert processed_7 == 7
 
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         PipelineUIProcessing.substitution_method("SSB000")
 
 

@@ -434,7 +434,8 @@ class AnnotatorUIProcessing(_AnnotatorUI):
     def vcf_upload_sources(
         vcf_upload_selection: list[UploadedFile], tmp_dir: pathlib.Path
     ):
-        assert tmp_dir.exists()
+        if not tmp_dir.exists():
+            raise NotADirectoryError(tmp_dir)
 
         n_uploads = len(vcf_upload_selection)
 

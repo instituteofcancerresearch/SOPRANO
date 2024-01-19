@@ -14,11 +14,7 @@ RUN mamba run --no-capture-output -n soprano Rscript install_R_pkgs.R &&  \
     rm install_R_pkgs.R
 
 # Prepare Python dependencies (this could be better...)
-COPY pyproject.toml ./
-RUN sed -i '71,84d' pyproject.toml &&  \
-    sed -i '38d' pyproject.toml &&  \
-    sed -i '/name = "SOPRANO"/a version="0.0.1"' pyproject.toml && \
-    touch README.md
+COPY pyproject.toml README.md ./
 
 # Run pip install
 COPY src ./src

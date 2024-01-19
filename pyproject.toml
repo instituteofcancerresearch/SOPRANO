@@ -35,7 +35,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Intended Audience :: Science/Research"
 ]
-version = "0.0.1"
+dynamic = [
+    "version"
+]
 
 [project.optional-dependencies]
 dev = [
@@ -78,3 +80,6 @@ line_length = 79
 
 [tool.ruff]
 line-length = 79
+
+[tool.hatch.version]
+path = "src/version.py"

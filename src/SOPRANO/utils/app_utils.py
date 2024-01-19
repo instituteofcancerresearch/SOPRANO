@@ -282,8 +282,14 @@ class PipelineUIProcessing(_PipelineUI):
             cache_dir = None
         else:
             cache_dir = Directories.soprano_cache(job_name)
-            st.text(f"Pipeline results cache: {cache_dir}")
-            job_name_ready = True
+
+            if cache_dir.exists():
+                st.warning(f"Pipeline cache already in use: {cache_dir}")
+                job_name_ready = False
+            else:
+                st.text(f"Pipeline results cache: {cache_dir}")
+                job_name_ready = True
+
         return job_name_ready, cache_dir
 
     @staticmethod

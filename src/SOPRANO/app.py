@@ -1,19 +1,18 @@
 import os
 import pathlib
-import shutil
 
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
 
 from SOPRANO.core import objects
 from SOPRANO.utils.app_utils import (
+    AnnoCache,
     AnnotatorUIOptions,
     AnnotatorUIProcessing,
     DownloaderUIOptions,
     DownloaderUIProcessing,
     ImmunopeptidomesUIOptions,
     ImmunopeptidomeUIProcessing,
-    LinkVEPUIProcessing,
     PipelineUIOptions,
     PipelineUIProcessing,
     RunTab,
@@ -165,11 +164,14 @@ def with_tab_genomes(tab: DeltaGenerator):
             "VEP cache location:", value=Directories.std_sys_vep().as_posix()
         )
 
-        cache_location_processed = LinkVEPUIProcessing.cache_location(
-            cache_location_selection
-        )
+        (
+            cache_location_ready,
+            cache_location_processed,
+        ) = DownloaderUIProcessing.vep_cache_location(cache_location_selection)
 
-        if st.button("Attempt VEP cache link", disabled=False):
+        if st.button(
+            "Attempt VEP cache link", disabled=not cache_location_ready
+        ):
             RunTab.link_vep(cache_location_processed)
 
         st.subheader("Download new reference genome files")
@@ -199,15 +201,19 @@ def with_tab_genomes(tab: DeltaGenerator):
             value="Homo Sapiens",
             disabled=True,
         )
-        species_processed = DownloaderUIProcessing.species(species_selection)
+        (
+            species_processed_ready,
+            species_processed,
+        ) = DownloaderUIProcessing.species(species_selection)
 
         assembly_selection = st.text_input(
             "Define the genome reference:",
             value="GRCh38",
         )
-        assembly_processed = DownloaderUIProcessing.assembly(
-            assembly_selection
-        )
+        (
+            assembly_processed_ready,
+            assembly_processed,
+        ) = DownloaderUIProcessing.assembly(assembly_selection)
 
         release_selection = st.number_input(
             "Define the Ensembl release:",
@@ -215,13 +221,19 @@ def with_tab_genomes(tab: DeltaGenerator):
             key="download_release",
             value=110,
         )
-        release_processed = DownloaderUIProcessing.release(release_selection)
+
+        (
+            release_processed_ready,
+            release_processed,
+        ) = DownloaderUIProcessing.release(release_selection)
 
         type_selection = st.selectbox(
             "Download type:",
             options=DownloaderUIOptions.type(),
         )
-        type_processed = DownloaderUIProcessing.type(type_selection)
+        type_processed_ready, type_processed = DownloaderUIProcessing.type(
+            type_selection
+        )
 
         if st.button("Download", disabled=feature_disabled):
             RunTab.download(
@@ -230,20 +242,6 @@ def with_tab_genomes(tab: DeltaGenerator):
                 release=release_processed,
                 download_type=type_processed,
             )
-
-
-class AnnoCache:
-    def __init__(self):
-        self.path = pathlib.Path("/tmp") / "soprano-anno"
-        try:
-            self.clean_up()
-        except FileNotFoundError:
-            pass
-        finally:
-            self.path.mkdir(exist_ok=True)
-
-    def clean_up(self):
-        shutil.rmtree(self.path)
 
 
 def with_tab_annotator(tab: DeltaGenerator):

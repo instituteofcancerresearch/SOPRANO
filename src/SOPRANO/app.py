@@ -167,7 +167,7 @@ def with_tab_genomes(tab: DeltaGenerator):
         (
             cache_location_ready,
             cache_location_processed,
-        ) = DownloaderUIProcessing.cache_location(cache_location_selection)
+        ) = DownloaderUIProcessing.vep_cache_location(cache_location_selection)
 
         if st.button(
             "Attempt VEP cache link", disabled=not cache_location_ready
@@ -201,15 +201,19 @@ def with_tab_genomes(tab: DeltaGenerator):
             value="Homo Sapiens",
             disabled=True,
         )
-        species_processed = DownloaderUIProcessing.species(species_selection)
+        (
+            species_processed_ready,
+            species_processed,
+        ) = DownloaderUIProcessing.species(species_selection)
 
         assembly_selection = st.text_input(
             "Define the genome reference:",
             value="GRCh38",
         )
-        assembly_processed = DownloaderUIProcessing.assembly(
-            assembly_selection
-        )
+        (
+            assembly_processed_ready,
+            assembly_processed,
+        ) = DownloaderUIProcessing.assembly(assembly_selection)
 
         release_selection = st.number_input(
             "Define the Ensembl release:",
@@ -217,13 +221,19 @@ def with_tab_genomes(tab: DeltaGenerator):
             key="download_release",
             value=110,
         )
-        release_processed = DownloaderUIProcessing.release(release_selection)
+
+        (
+            release_processed_ready,
+            release_processed,
+        ) = DownloaderUIProcessing.release(release_selection)
 
         type_selection = st.selectbox(
             "Download type:",
             options=DownloaderUIOptions.type(),
         )
-        type_processed = DownloaderUIProcessing.type(type_selection)
+        type_processed_ready, type_processed = DownloaderUIProcessing.type(
+            type_selection
+        )
 
         if st.button("Download", disabled=feature_disabled):
             RunTab.download(

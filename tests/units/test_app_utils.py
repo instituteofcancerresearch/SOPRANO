@@ -191,7 +191,7 @@ def test_pipeline_processing_job_name():
 
 def test_vep_processing_cache_location():
     test_loc = Path.cwd()
-    assert DownloaderUIProcessing.cache_location(test_loc.as_posix()) == (
+    assert DownloaderUIProcessing.vep_cache_location(test_loc.as_posix()) == (
         True,
         test_loc,
     )
@@ -204,23 +204,26 @@ def test_downloader_options_type():
 
 
 def test_downloader_processing_species():
-    assert DownloaderUIProcessing.species("Big Dog") == "big_dog"
+    assert DownloaderUIProcessing.species("Big Dog") == (True, "big_dog")
 
 
 def test_downloader_processing_assembly():
-    assert DownloaderUIProcessing.assembly("cat") == "cat"
+    assert DownloaderUIProcessing.assembly("cat") == (True, "cat")
 
 
 def test_downloader_processing_release():
-    assert DownloaderUIProcessing.release("123") == 123
+    assert DownloaderUIProcessing.release("123") == (True, 123)
 
 
 def test_downloader_processing_type():
     with pytest.raises(ValueError):
         DownloaderUIProcessing.type("cat")
 
-    for permitted in ("primary_assembly", "toplevel"):
-        assert DownloaderUIProcessing.type(permitted) == permitted
+    for permitted in (
+        DownloaderUIOptions.OPTION_TYPE_PRIMARY_ASSEMBLY,
+        DownloaderUIOptions.OPTION_TYPE_TOPLEVEL,
+    ):
+        assert DownloaderUIProcessing.type(permitted) == (True, permitted)
 
 
 def test_immunopeptidome_options_hla_alleles():

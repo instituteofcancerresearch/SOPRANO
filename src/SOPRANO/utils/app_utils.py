@@ -323,7 +323,7 @@ class _DownloaderUI:
         pass
 
     @staticmethod
-    def cache_location(*args, **kwargs):
+    def vep_cache_location(*args, **kwargs):
         pass
 
 
@@ -344,12 +344,12 @@ class DownloaderUIProcessing(_DownloaderUI):
     def species(species_selection: str):
         output = fix_species_arg(species_selection)
         st.text(f"Selected: {output}")
-        return output
+        return True, output
 
     @staticmethod
     def assembly(assembly_selection: str):
         st.text(f"Selected: {assembly_selection}")
-        return assembly_selection
+        return True, assembly_selection
 
     @staticmethod
     def release(release: str):
@@ -359,7 +359,7 @@ class DownloaderUIProcessing(_DownloaderUI):
         if output > 110:
             st.text("[Warning] Oct 1 2023: Latest Ensembl release is 110")
 
-        return output
+        return True, output
 
     @staticmethod
     def type(type_selection: str):
@@ -370,10 +370,10 @@ class DownloaderUIProcessing(_DownloaderUI):
             raise ValueError(type_selection)
 
         st.text(f"Selected: {type_selection}")
-        return type_selection
+        return True, type_selection
 
     @staticmethod
-    def cache_location(cache_location: str):
+    def vep_cache_location(cache_location: str):
         output = pathlib.Path(cache_location)
 
         ready = output.exists()

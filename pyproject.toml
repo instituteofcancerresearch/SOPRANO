@@ -35,7 +35,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Intended Audience :: Science/Research"
 ]
-dynamic = ["version"]
+version = "0.0.1"
 
 [project.optional-dependencies]
 dev = [
@@ -67,10 +67,6 @@ soprano-get-genome = "SOPRANO.run:download_genome"
 soprano-link-vep = "SOPRANO.run:link_vep_cache"
 soprano-hla2ip = "SOPRANO.run:hla2pip"
 soprano-annotate = "SOPRANO.run:annotate_vcfs"
-
-[tool.hatch]
-version.source = "vcs"
-build.hooks.vcs.version-file = "src/SOPRANO/version.py"
 
 [tool.black]
 skip-string-normalization = false

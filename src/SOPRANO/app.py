@@ -1,23 +1,22 @@
 import os
 import pathlib
-import shutil
 
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
 
 from SOPRANO.core import objects
 from SOPRANO.utils.app_utils import (
+    AnnoCache,
     AnnotatorUIOptions,
     AnnotatorUIProcessing,
     DownloaderUIOptions,
     DownloaderUIProcessing,
     ImmunopeptidomesUIOptions,
     ImmunopeptidomeUIProcessing,
-    LinkVEPUIProcessing,
     PipelineUIOptions,
     PipelineUIProcessing,
     RunTab,
-    text_or_file,
+    process_text_and_file_inputs,
 )
 from SOPRANO.utils.path_utils import Directories
 
@@ -165,11 +164,14 @@ def with_tab_genomes(tab: DeltaGenerator):
             "VEP cache location:", value=Directories.std_sys_vep().as_posix()
         )
 
-        cache_location_processed = LinkVEPUIProcessing.cache_location(
-            cache_location_selection
-        )
+        (
+            cache_location_ready,
+            cache_location_processed,
+        ) = DownloaderUIProcessing.vep_cache_location(cache_location_selection)
 
-        if st.button("Attempt VEP cache link", disabled=False):
+        if st.button(
+            "Attempt VEP cache link", disabled=not cache_location_ready
+        ):
             RunTab.link_vep(cache_location_processed)
 
         st.subheader("Download new reference genome files")
@@ -199,15 +201,19 @@ def with_tab_genomes(tab: DeltaGenerator):
             value="Homo Sapiens",
             disabled=True,
         )
-        species_processed = DownloaderUIProcessing.species(species_selection)
+        (
+            species_processed_ready,
+            species_processed,
+        ) = DownloaderUIProcessing.species(species_selection)
 
         assembly_selection = st.text_input(
             "Define the genome reference:",
             value="GRCh38",
         )
-        assembly_processed = DownloaderUIProcessing.assembly(
-            assembly_selection
-        )
+        (
+            assembly_processed_ready,
+            assembly_processed,
+        ) = DownloaderUIProcessing.assembly(assembly_selection)
 
         release_selection = st.number_input(
             "Define the Ensembl release:",
@@ -215,13 +221,19 @@ def with_tab_genomes(tab: DeltaGenerator):
             key="download_release",
             value=110,
         )
-        release_processed = DownloaderUIProcessing.release(release_selection)
+
+        (
+            release_processed_ready,
+            release_processed,
+        ) = DownloaderUIProcessing.release(release_selection)
 
         type_selection = st.selectbox(
             "Download type:",
             options=DownloaderUIOptions.type(),
         )
-        type_processed = DownloaderUIProcessing.type(type_selection)
+        type_processed_ready, type_processed = DownloaderUIProcessing.type(
+            type_selection
+        )
 
         if st.button("Download", disabled=feature_disabled):
             RunTab.download(
@@ -230,20 +242,6 @@ def with_tab_genomes(tab: DeltaGenerator):
                 release=release_processed,
                 download_type=type_processed,
             )
-
-
-class AnnoCache:
-    def __init__(self):
-        self.path = pathlib.Path("/tmp") / "soprano-anno"
-        try:
-            self.clean_up()
-        except FileNotFoundError:
-            pass
-        finally:
-            self.path.mkdir(exist_ok=True)
-
-    def clean_up(self):
-        shutil.rmtree(self.path)
 
 
 def with_tab_annotator(tab: DeltaGenerator):
@@ -364,72 +362,71 @@ def with_tab_immunopeptidome(tab: DeltaGenerator):
             hla_alleles_processed,
         ) = ImmunopeptidomeUIProcessing.hla_alleles(hla_alleles_selected)
 
-        st.header("Ensembl transcript selections")
-
-        st.markdown(
-            "Analyses can be further restricted by providing a set of "
-            "Ensembl transcript IDs to either\n\n"
-            "1. Exclude from the analysis; or\n"
-            "2. Restrict the analysis to.\n\n"
-            "These filtering characteristics are presented as the choices\n"
-            "1 Retention\n"
-            "2 Exclusion\n\n"
-            "in the following drop down menu.\n\n"
-            "Transcript IDs should either be manually entered into the text "
-            "box over separate lines, or uploaded within a text file of "
-            "similar contents."
+        filter_by_transcript = st.checkbox(
+            "Filter by ensembl transcript IDs?", value=False
         )
 
-        # TODO: Change to switch option to display uploader/text input
-        initial_transcripts_ready, initial_transcript_selected = text_or_file(
-            "Define the Ensembl transcript IDs to restrict or exclude from the"
-            " immunopeptidome construction.",
-            help_text="Provide transcript IDs on separate lines.",
-            help_upload="Select a text file defining transcript IDs on "
-            "separate lines.",
-        )
+        if filter_by_transcript:
+            st.header("Ensembl transcript selections")
 
-        (
-            transcripts_processed_ready,
-            transcripts_processed,
-        ) = ImmunopeptidomeUIProcessing.transcript_ids(
-            initial_transcript_selected,
-        )
+            transcript_supply_method = st.radio(
+                "Select a method to define transcript IDs:",
+                options=("File uploader", "Text box"),
+            )
 
-        subset_method_selected = st.selectbox(
-            "Select method to subset available Ensembl transcript IDs "
-            "(optional):",
-            options=ImmunopeptidomesUIOptions.subset_method(),
-        )
+            if transcript_supply_method == "File uploader":
+                raw_transcript_input = st.file_uploader(
+                    "Upload a file containing ensembl "
+                    "transcript IDs over separate lines: ",
+                )
+            else:
+                _raw_transcript_input = st.text_area(
+                    "Enter ensembl transcript IDs " "over separate lines:",
+                    value="",
+                )
 
-        (
-            subset_ready,
-            retained_excluded,
-        ) = ImmunopeptidomeUIProcessing.subset_method(
-            transcripts_processed, subset_method_selected
-        )
+                if _raw_transcript_input:
+                    raw_transcript_input = _raw_transcript_input
+                else:
+                    raw_transcript_input = None
 
-        transcripts_ready = transcripts_processed_ready and subset_ready
+            (
+                processed_transcripts_ready,
+                processed_transcript_input,
+            ) = process_text_and_file_inputs(raw_transcript_input)
 
+            subset_method_selected = st.radio(
+                "Select method to subset available Ensembl transcript IDs:",
+                options=ImmunopeptidomesUIOptions.subset_method(),
+            )
+
+            (
+                subset_ready,
+                retained_excluded,
+            ) = ImmunopeptidomeUIProcessing.subset_method(
+                processed_transcript_input, subset_method_selected
+            )
+
+        else:
+            processed_transcripts_ready = True
+            subset_ready = True
+            retained_excluded = [], []
+
+        transcripts_ready = processed_transcripts_ready and subset_ready
         transcripts_retained, transcripts_excluded = retained_excluded
-
-        st.markdown(
-            "Once you are happy with your immunopeptidome choices, "
-            "provide a name for the corresponding file, then click "
-            "'Build immunopeptidome'."
-        )
 
         name_selected = st.text_input("Immunopeptidome name:")
         name_ready, name_processed = ImmunopeptidomeUIProcessing.name(
             name_selected
         )
 
-        selections_ready = hla_alleles_ready or transcripts_ready
+        selections_ready = hla_alleles_ready and transcripts_ready
 
         if not selections_ready:
             st.warning(
-                "Please provide a set of alleles of transcript IDs to "
-                "construct the restricted immunopeptidome input file."
+                "Please provide a set of alleles (and transcript IDs if "
+                "relevant) to construct the restricted immunopeptidome "
+                "input file."
             )
 
         if not name_ready:

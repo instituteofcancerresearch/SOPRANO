@@ -3,7 +3,7 @@ import pathlib
 from typing import List, Tuple
 
 from SOPRANO.utils.path_utils import Directories
-from SOPRANO.utils.url_utils import compute_fasta_index, compute_chrom_sizes
+from SOPRANO.utils.url_utils import compute_chrom_sizes, compute_fasta_index
 
 
 def _get_src_dst_link_pairs(vep_cache: pathlib.Path):

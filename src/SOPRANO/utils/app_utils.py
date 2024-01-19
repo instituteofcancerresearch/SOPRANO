@@ -1,5 +1,6 @@
 import os
 import pathlib
+import shutil
 from contextlib import contextmanager, redirect_stdout
 from io import StringIO
 from time import time
@@ -35,14 +36,17 @@ def process_text_and_file_inputs(
     remove_empty_lines=True,
 ):
     if raw_input is None:
-        return False, None
+        return False, []
     elif isinstance(raw_input, str):
         if raw_input == "":
-            return False, None
+            return False, []
         else:
             lines = raw_input.split("\n")
-    else:
+    elif isinstance(raw_input, UploadedFile):
         lines = StringIO(raw_input.getvalue().decode("utf-8")).readlines()
+    else:
+        raise TypeError(raw_input)
+
     lines = [line.strip() for line in lines]
 
     if remove_empty_lines:
@@ -122,12 +126,6 @@ def st_capture(output_func):
         yield
 
 
-def _select_from_dict(selection: str, selection_dict: dict):
-    selection_value = selection_dict[selection]
-    # st.text(f"Selected: {selection_value}")
-    return selection_value
-
-
 class _PipelineUI:
     @staticmethod
     def genome_reference(*args, **kwargs):
@@ -159,6 +157,9 @@ class _PipelineUI:
 
 
 class PipelineUIOptions(_PipelineUI):
+    OPTION_SUBS_METHOD_SSB7 = "SSB7"
+    OPTION_SUBS_METHOD_SSB192 = "SSB192"
+
     @staticmethod
     def genome_reference():
         homo_sapiens_dir = Directories.homo_sapien_reference_files()
@@ -186,6 +187,8 @@ class PipelineUIOptions(_PipelineUI):
             name: dir_path for name, dir_path in zip(genome_ids, genome_dirs)
         }
 
+        # Note: Dictionary keys are presented as options in the UI!
+
         return options_dict
 
     @staticmethod
@@ -212,11 +215,14 @@ class PipelineUIOptions(_PipelineUI):
 
     @staticmethod
     def substitution_method():
-        return {"SSB192": 192, "SSB7": 7}
+        return (
+            PipelineUIOptions.OPTION_SUBS_METHOD_SSB192,
+            PipelineUIOptions.OPTION_SUBS_METHOD_SSB7,
+        )
 
     @staticmethod
     def coordinates():
-        options_dict = {None: None}
+        options_dict = {}
         for x in Directories.app_coordinate_files().glob("*.bed"):
             options_dict[x.name] = x
         return options_dict
@@ -248,22 +254,26 @@ class PipelineUIProcessing(_PipelineUI):
     @staticmethod
     def annotated_mutations(annotation_selection: str):
         options_dict = PipelineUIOptions.annotated_mutations()
-        return True, _select_from_dict(annotation_selection, options_dict)
+        return True, options_dict[annotation_selection]
 
     @staticmethod
     def immunopeptidome(immunopeptidome_selection: str):
         options_dict = PipelineUIOptions.immunopeptidome()
-        return True, _select_from_dict(immunopeptidome_selection, options_dict)
+        return True, options_dict[immunopeptidome_selection]
 
     @staticmethod
     def substitution_method(subs_selection: str):
-        options_dict = PipelineUIOptions.substitution_method()
-        return True, _select_from_dict(subs_selection, options_dict)
+        if subs_selection == PipelineUIOptions.OPTION_SUBS_METHOD_SSB192:
+            return True, 192
+        elif subs_selection == PipelineUIOptions.OPTION_SUBS_METHOD_SSB7:
+            return True, 7
+        else:
+            raise ValueError(f"Unrecognized method: {subs_selection}")
 
     @staticmethod
     def coordinates(coordinates_selection: str):
         options_dict = PipelineUIOptions.coordinates()
-        return True, _select_from_dict(coordinates_selection, options_dict)
+        return True, options_dict.get(coordinates_selection, None)
 
     @staticmethod
     def job_name(job_name: str):
@@ -272,8 +282,14 @@ class PipelineUIProcessing(_PipelineUI):
             cache_dir = None
         else:
             cache_dir = Directories.soprano_cache(job_name)
-            st.text(f"Pipeline results cache: {cache_dir}")
-            job_name_ready = True
+
+            if cache_dir.exists():
+                st.warning(f"Pipeline cache already in use: {cache_dir}")
+                job_name_ready = False
+            else:
+                st.text(f"Pipeline results cache: {cache_dir}")
+                job_name_ready = True
+
         return job_name_ready, cache_dir
 
     @staticmethod
@@ -287,24 +303,6 @@ class PipelineUIProcessing(_PipelineUI):
             cache_ready = False
 
         return cache_ready, cache_selected
-
-
-class _LinkVEPUI:
-    @staticmethod
-    def cache_location(*args, **kwargs):
-        pass
-
-
-class LinkVEPUIOptions(_LinkVEPUI):
-    pass
-
-
-class LinkVEPUIProcessing(_LinkVEPUI):
-    @staticmethod
-    def cache_location(cache_location: str):
-        output = pathlib.Path(cache_location)
-        st.text(f"Selected: {output}")
-        return output
 
 
 class _DownloaderUI:
@@ -324,11 +322,21 @@ class _DownloaderUI:
     def type(*args, **kwargs):
         pass
 
+    @staticmethod
+    def vep_cache_location(*args, **kwargs):
+        pass
+
 
 class DownloaderUIOptions(_DownloaderUI):
+    OPTION_TYPE_TOPLEVEL = "toplevel"
+    OPTION_TYPE_PRIMARY_ASSEMBLY = "primary_assembly"
+
     @staticmethod
     def type():
-        return "toplevel", "primary_assembly"
+        return (
+            DownloaderUIOptions.OPTION_TYPE_TOPLEVEL,
+            DownloaderUIOptions.OPTION_TYPE_PRIMARY_ASSEMBLY,
+        )
 
 
 class DownloaderUIProcessing(_DownloaderUI):
@@ -336,12 +344,12 @@ class DownloaderUIProcessing(_DownloaderUI):
     def species(species_selection: str):
         output = fix_species_arg(species_selection)
         st.text(f"Selected: {output}")
-        return output
+        return True, output
 
     @staticmethod
     def assembly(assembly_selection: str):
         st.text(f"Selected: {assembly_selection}")
-        return assembly_selection
+        return True, assembly_selection
 
     @staticmethod
     def release(release: str):
@@ -351,15 +359,30 @@ class DownloaderUIProcessing(_DownloaderUI):
         if output > 110:
             st.text("[Warning] Oct 1 2023: Latest Ensembl release is 110")
 
-        return output
+        return True, output
 
     @staticmethod
     def type(type_selection: str):
-        if type_selection not in ("toplevel", "primary_assembly"):
+        if type_selection not in (
+            DownloaderUIOptions.OPTION_TYPE_TOPLEVEL,
+            DownloaderUIOptions.OPTION_TYPE_PRIMARY_ASSEMBLY,
+        ):
             raise ValueError(type_selection)
 
         st.text(f"Selected: {type_selection}")
-        return type_selection
+        return True, type_selection
+
+    @staticmethod
+    def vep_cache_location(cache_location: str):
+        output = pathlib.Path(cache_location)
+
+        ready = output.exists()
+
+        if not ready:
+            st.warning(f"Cache directory does not exist: {cache_location}")
+        else:
+            st.text(f"Selected: {output}")
+        return ready, output
 
 
 class _AnnotatorUI:
@@ -385,13 +408,25 @@ class _AnnotatorUI:
 
 
 class AnnotatorUIOptions(_AnnotatorUI):
+    OPTION_VCF_DEF_METHOD_SYS_PATH = "System path"
+    OPTION_VCF_DEF_METHOD_UPLOADER = "File uploader"
+
+    OPTION_ASSEMBLY_TYPE_38 = "GRCh38"
+    OPTION_ASSEMBLY_TYPE_37 = "GRCh37"
+
     @staticmethod
     def vcf_definition_method():
-        return "System path", "File uploader"
+        return (
+            AnnotatorUIOptions.OPTION_VCF_DEF_METHOD_SYS_PATH,
+            AnnotatorUIOptions.OPTION_VCF_DEF_METHOD_UPLOADER,
+        )
 
     @staticmethod
     def assembly_type():
-        return "GRCh38", "GRCh37"
+        return (
+            AnnotatorUIOptions.OPTION_ASSEMBLY_TYPE_38,
+            AnnotatorUIOptions.OPTION_ASSEMBLY_TYPE_37,
+        )
 
 
 class AnnotatorUIProcessing(_AnnotatorUI):
@@ -399,7 +434,8 @@ class AnnotatorUIProcessing(_AnnotatorUI):
     def vcf_upload_sources(
         vcf_upload_selection: list[UploadedFile], tmp_dir: pathlib.Path
     ):
-        assert tmp_dir.exists()
+        if not tmp_dir.exists():
+            raise NotADirectoryError(tmp_dir)
 
         n_uploads = len(vcf_upload_selection)
 
@@ -422,7 +458,10 @@ class AnnotatorUIProcessing(_AnnotatorUI):
 
     @staticmethod
     def assembly_type(genome_assembly_selection: str):
-        if genome_assembly_selection in ("GRCh38", "GRCh37"):
+        if genome_assembly_selection in (
+            AnnotatorUIOptions.OPTION_ASSEMBLY_TYPE_38,
+            AnnotatorUIOptions.OPTION_ASSEMBLY_TYPE_37,
+        ):
             assembly_ready = True
         else:
             st.warning("Currently only supporting GRCh38 and GRCh37.")
@@ -486,6 +525,9 @@ class _ImmunopeptidomeUI:
 
 
 class ImmunopeptidomesUIOptions(_ImmunopeptidomeUI):
+    OPTION_SUBSET_METHOD_RETAIN = "Retain only the chosen transcript IDs"
+    OPTION_SUBSET_METHOD_EXCLUDE = "Exclude all the chosen transcript IDs"
+
     @staticmethod
     def hla_alleles():
         hla_types_path = Directories.immunopeptidome_aux_files(
@@ -511,7 +553,10 @@ class ImmunopeptidomesUIOptions(_ImmunopeptidomeUI):
 
     @staticmethod
     def subset_method():
-        return "None", "Retention", "Exclusion"
+        return (
+            ImmunopeptidomesUIOptions.OPTION_SUBSET_METHOD_RETAIN,
+            ImmunopeptidomesUIOptions.OPTION_SUBSET_METHOD_EXCLUDE,
+        )
 
 
 class ImmunopeptidomeUIProcessing(_ImmunopeptidomeUI):
@@ -535,17 +580,14 @@ class ImmunopeptidomeUIProcessing(_ImmunopeptidomeUI):
     def subset_method(transcripts: list[str], method: str):
         retained: list[str] = []
         excluded: list[str] = []
-        if len(transcripts) > 0 and method == "None":
-            st.warning("Transcripts selected without filtering method choice.")
+        if len(transcripts) < 1:
+            st.warning("No transcripts currently defined.")
             ready = False
-        elif len(transcripts) == 0 and method == "None":
-            st.text("No subset method required: no transcripts")
-            ready = True
-        elif method == "Retention":
+        elif method == ImmunopeptidomesUIOptions.OPTION_SUBSET_METHOD_RETAIN:
             st.text(f"Retaining subset of transcripts: {transcripts}")
             ready = True
             retained = transcripts
-        elif method == "Exclusion":
+        elif method == ImmunopeptidomesUIOptions.OPTION_SUBSET_METHOD_EXCLUDE:
             st.text(f"Excluding subset of transcripts: {transcripts}")
             ready = True
             excluded = transcripts
@@ -725,3 +767,17 @@ class RunTab:
                 "likely caused by the selected HLA being unavailable in "
                 "the (filtered) transcript file."
             )
+
+
+class AnnoCache:
+    def __init__(self):
+        self.path = pathlib.Path("/tmp") / "soprano-anno"
+        try:
+            self.clean_up()
+        except FileNotFoundError:
+            pass
+        finally:
+            self.path.mkdir(exist_ok=True)
+
+    def clean_up(self):
+        shutil.rmtree(self.path)

@@ -9,11 +9,9 @@ from SOPRANO.utils.app_utils import (
     DownloaderUIProcessing,
     ImmunopeptidomesUIOptions,
     ImmunopeptidomeUIProcessing,
-    LinkVEPUIProcessing,
     PipelineUIOptions,
     PipelineUIProcessing,
     _lines_ok,
-    _select_from_dict,
     process_text_and_file_inputs,
 )
 from SOPRANO.utils.path_utils import _SOPRANO_DEFAULT_CACHE, Directories
@@ -76,11 +74,6 @@ def _check_options_generator(method, directory: Path, extension: str):
             assert options[c._fail_ext.name] == c._fail_ext
 
 
-def test__select_from_dict():
-    k, v = "foo", "bar"
-    assert _select_from_dict(k, {k: v}) == v
-
-
 def test_pipeline_options_genome_reference(mock_genome_dir):
     assembly, release, mock_dir = mock_genome_dir
 
@@ -111,8 +104,11 @@ def test_pipeline_options_immunopeptidome():
 
 
 def test_pipeline_options_substitution_method():
-    for v in (192, 7):
-        assert v in PipelineUIOptions.substitution_method().values()
+    for v in (
+        PipelineUIOptions.OPTION_SUBS_METHOD_SSB192,
+        PipelineUIOptions.OPTION_SUBS_METHOD_SSB7,
+    ):
+        assert v in PipelineUIOptions.substitution_method()
 
 
 def test_pipeline_options_coordinates():
@@ -172,7 +168,7 @@ def test_pipeline_processing_substitution_method():
     condition, processed_7 = PipelineUIProcessing.substitution_method("SSB7")
     assert processed_7 == 7
 
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         PipelineUIProcessing.substitution_method("SSB000")
 
 
@@ -195,7 +191,10 @@ def test_pipeline_processing_job_name():
 
 def test_vep_processing_cache_location():
     test_loc = Path.cwd()
-    assert LinkVEPUIProcessing.cache_location(test_loc.as_posix()) == test_loc
+    assert DownloaderUIProcessing.vep_cache_location(test_loc.as_posix()) == (
+        True,
+        test_loc,
+    )
 
 
 def test_downloader_options_type():
@@ -205,23 +204,26 @@ def test_downloader_options_type():
 
 
 def test_downloader_processing_species():
-    assert DownloaderUIProcessing.species("Big Dog") == "big_dog"
+    assert DownloaderUIProcessing.species("Big Dog") == (True, "big_dog")
 
 
 def test_downloader_processing_assembly():
-    assert DownloaderUIProcessing.assembly("cat") == "cat"
+    assert DownloaderUIProcessing.assembly("cat") == (True, "cat")
 
 
 def test_downloader_processing_release():
-    assert DownloaderUIProcessing.release("123") == 123
+    assert DownloaderUIProcessing.release("123") == (True, 123)
 
 
 def test_downloader_processing_type():
     with pytest.raises(ValueError):
         DownloaderUIProcessing.type("cat")
 
-    for permitted in ("primary_assembly", "toplevel"):
-        assert DownloaderUIProcessing.type(permitted) == permitted
+    for permitted in (
+        DownloaderUIOptions.OPTION_TYPE_PRIMARY_ASSEMBLY,
+        DownloaderUIOptions.OPTION_TYPE_TOPLEVEL,
+    ):
+        assert DownloaderUIProcessing.type(permitted) == (True, permitted)
 
 
 def test_immunopeptidome_options_hla_alleles():
@@ -241,7 +243,10 @@ def test_immunopeptidome_options_transcript_ids():
 
 
 def test_immunopeptidome_options_subset_method():
-    expected = {"None", "Retention", "Exclusion"}
+    expected = {
+        ImmunopeptidomesUIOptions.OPTION_SUBSET_METHOD_RETAIN,
+        ImmunopeptidomesUIOptions.OPTION_SUBSET_METHOD_EXCLUDE,
+    }
 
     assert set(ImmunopeptidomesUIOptions.subset_method()) == expected
 
@@ -268,10 +273,14 @@ def test_immunopeptidome_processing_transcript_ids():
 
 
 # Feedstock for test immunopeptidome processing
-transcript_inputs = [[1, 2, 3], [1, 2], [1, 2]]
-method_inputs = ["None", "Retention", "Exclusion"]
-ready_outputs = [False, True, True]
-retained_excluded_outputs = [([], []), ([1, 2], []), ([], [1, 2])]
+transcript_inputs = [[1, 2], [1, 2], []]
+method_inputs = [
+    ImmunopeptidomesUIOptions.OPTION_SUBSET_METHOD_RETAIN,
+    ImmunopeptidomesUIOptions.OPTION_SUBSET_METHOD_EXCLUDE,
+    ImmunopeptidomesUIOptions.OPTION_SUBSET_METHOD_EXCLUDE,
+]
+ready_outputs = [True, True, False]
+retained_excluded_outputs = [([1, 2], []), ([], [1, 2]), ([], [])]
 _test_values = list(
     zip(
         transcript_inputs,

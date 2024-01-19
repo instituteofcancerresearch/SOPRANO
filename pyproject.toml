@@ -35,7 +35,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Intended Audience :: Science/Research"
 ]
-dynamic = ["version"]
+dynamic = [
+    "version"
+]
 
 [project.optional-dependencies]
 dev = [
@@ -68,10 +70,6 @@ soprano-link-vep = "SOPRANO.run:link_vep_cache"
 soprano-hla2ip = "SOPRANO.run:hla2pip"
 soprano-annotate = "SOPRANO.run:annotate_vcfs"
 
-[tool.hatch]
-version.source = "vcs"
-build.hooks.vcs.version-file = "src/SOPRANO/version.py"
-
 [tool.black]
 skip-string-normalization = false
 line-length = 79
@@ -82,3 +80,6 @@ line_length = 79
 
 [tool.ruff]
 line-length = 79
+
+[tool.hatch.version]
+path = "src/version.py"

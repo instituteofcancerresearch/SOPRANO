@@ -15,6 +15,6 @@ repos:
     -   id: mypy
         additional_dependencies: ['types-requests']
 -   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.13
+    rev: v0.1.7
     hooks:
     -   id: ruff

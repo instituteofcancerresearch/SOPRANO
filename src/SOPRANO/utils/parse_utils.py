@@ -63,7 +63,9 @@ def parse_genome_args(argv=None):
 
 
 def parse_args(argv=None):
-    parser = argparse.ArgumentParser(description="SOPRANO input arguments")
+    parser = argparse.ArgumentParser(
+        description="SOPRANO input arguments", fromfile_prefix_chars="@"
+    )
 
     parser.add_argument(
         "--input",

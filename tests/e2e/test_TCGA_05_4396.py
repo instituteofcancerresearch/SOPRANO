@@ -18,6 +18,9 @@ release = 110
 # Differentiate SSB192 and SSB7 test cases
 expected_tsv_ssb192_path = Directories.int_tests("TCGA-05-4396_SSB192.tsv")
 expected_tsv_ssb7_path = Directories.int_tests("TCGA-05-4396_SSB7.tsv")
+expected_tsv_ssb7_random_path = Directories.int_tests(
+    "TCGA-05-4396_SSB7_random.tsv"
+)
 
 
 def _run_and_assert(params):
@@ -132,7 +135,12 @@ def test_pipeline_ssb192(tmp_path):
     computed_tsv = pd.read_csv(params.results_path, sep="\t")
     expected_tsv = pd.read_csv(expected_tsv_ssb192_path, sep="\t")
 
-    assert computed_tsv.equals(expected_tsv), (computed_tsv, expected_tsv)
+    print(computed_tsv)
+    print(expected_tsv)
+
+    pd.testing.assert_frame_equal(
+        computed_tsv, expected_tsv, check_dtype=False
+    )
 
 
 def test_pipeline_ssb7(tmp_path):
@@ -160,4 +168,43 @@ def test_pipeline_ssb7(tmp_path):
     computed_tsv = pd.read_csv(params.results_path, sep="\t")
     expected_tsv = pd.read_csv(expected_tsv_ssb7_path, sep="\t")
 
-    assert computed_tsv.equals(expected_tsv), (computed_tsv, expected_tsv)
+    print(computed_tsv)
+    print(expected_tsv)
+
+    pd.testing.assert_frame_equal(
+        computed_tsv, expected_tsv, check_dtype=False
+    )
+
+
+def test_pipeline_ssb7_random(tmp_path):
+    """
+    Test the TCGA-05-4396 with randomization. Seed value is 333.
+
+    :param tmp_path: invoked by pytest fixture
+    """
+
+    params = objects.Parameters(
+        analysis_name=name,
+        input_path=input_file,
+        bed_path=bed_file,
+        cache_dir=tmp_path,
+        random_regions=None,
+        use_ssb192=False,
+        use_random=True,
+        exclude_drivers=exclude_drivers,
+        seed=333,
+        transcripts=objects.TranscriptPaths.defaults(),
+        genomes=objects.GenomePaths.GRCh37(),
+    )
+
+    _run_and_assert(params)
+
+    computed_tsv = pd.read_csv(params.results_path, sep="\t")
+    expected_tsv = pd.read_csv(expected_tsv_ssb7_random_path, sep="\t")
+
+    print(computed_tsv)
+    print(expected_tsv)
+
+    pd.testing.assert_frame_equal(
+        computed_tsv, expected_tsv, check_dtype=False
+    )

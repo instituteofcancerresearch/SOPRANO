@@ -8,6 +8,7 @@ from SOPRANO.utils.parse_utils import (
     parse_args,
     parse_genome_args,
     parse_hla,
+    parse_link_vep_cache_args,
     parse_vcf_sources,
 )
 from SOPRANO.utils.path_utils import Directories
@@ -15,7 +16,6 @@ from SOPRANO.utils.print_utils import startup_output
 from SOPRANO.utils.vep_utils import (
     _get_src_dst_link_pairs,
     _link_src_dst_pairs,
-    _link_vep_cache_parser,
 )
 
 
@@ -32,7 +32,7 @@ def run_app():
 
 
 def link_vep_cache():
-    src_cache = _link_vep_cache_parser()
+    src_cache = parse_link_vep_cache_args()
     src_dst_links = _get_src_dst_link_pairs(src_cache)
     _link_src_dst_pairs(src_dst_links)
 

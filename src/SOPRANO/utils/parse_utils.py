@@ -152,6 +152,15 @@ def parse_args(argv=None):
         "If seed value is < 0, no seed value will be applied.",
     )
 
+    analysis_params_group.add_argument(
+        "--n_samples",
+        "-z",
+        dest="n_samples",
+        default=0,
+        type=int,
+        help="Provide number of samples to use in dNdS error estimates.",
+    )
+
     transcript_args = parser.add_argument_group()
 
     transcript_args.add_argument(

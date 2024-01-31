@@ -203,6 +203,7 @@ _NAMESPACE_KEYS = (
     "species",
     "assembly",
     "release",
+    "n_samples",
 )
 
 
@@ -220,6 +221,7 @@ class Parameters(AnalysisPaths):
         seed: int,
         transcripts: TranscriptPaths,
         genomes: GenomePaths,
+        n_samples: int,
     ):
         super().__init__(
             analysis_name, input_path, bed_path, cache_dir, random_regions
@@ -232,6 +234,7 @@ class Parameters(AnalysisPaths):
         self.use_random = use_random
         self.exclude_drivers = exclude_drivers
         self.seed = None if seed < 0 else seed
+        self.n_samples = n_samples
 
     @classmethod
     def from_namespace(cls, namespace: Namespace):
@@ -263,6 +266,8 @@ class Parameters(AnalysisPaths):
                 species=species, assembly=assembly
             ).get_genome_reference_paths(release)
 
+        n_samples = namespace.n_samples
+
         return cls(
             analysis_name=namespace.analysis_name,
             input_path=namespace.input_path,
@@ -275,6 +280,7 @@ class Parameters(AnalysisPaths):
             seed=namespace.seed,
             transcripts=transcripts,
             genomes=genomes,
+            n_samples=n_samples,
         )
 
 

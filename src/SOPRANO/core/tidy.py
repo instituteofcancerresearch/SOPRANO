@@ -1,44 +1,43 @@
-import pathlib
+import glob
+import os
+import tarfile
 
 from SOPRANO.core.objects import Parameters
-from SOPRANO.utils.sh_utils import pipe
 
 _PATTERNS_TO_IGNORE = ("*results.tsv", "*.log")
 
 
-def build_find_expression(
-    cache_dir: pathlib.Path, patterns_to_ignore=_PATTERNS_TO_IGNORE
-):
-    expression = ["find", cache_dir.as_posix(), "-type", "f", "!", r"\("]
+def find_files_to_tar_gz(params: Parameters):
+    _cache_dir = params.cache_dir.as_posix()
 
-    list_of_patterns = list(patterns_to_ignore)
+    files_to_ignore = []
 
-    n_patterns = len(list_of_patterns)
+    for pattern in _PATTERNS_TO_IGNORE:
+        files_to_ignore += glob.glob(f"{_cache_dir}/{pattern}")
 
-    while n_patterns > 0:
-        pattern = list_of_patterns.pop(0)
-        expression += ["-name", pattern]
+    files_to_tar_gz = glob.glob(f"{_cache_dir}/*")
 
-        n_patterns = len(list_of_patterns)
+    # Remove ignored file pattens
+    for _ in files_to_ignore:
+        files_to_tar_gz.remove(_)
 
-        if n_patterns > 0:
-            expression.append("-o")
-
-    expression += [r"\)", "-print0"]
-
-    return expression
-
-
-def build_tar_gz_expression(cache_dir: pathlib.Path):
-    tar_gz_path = cache_dir / "intermediate.data.tar.gz"
-
-    return ["tar", "-cvzf", tar_gz_path.as_posix(), "--null", "-T", "-"]
+    return files_to_tar_gz
 
 
 def tar_and_compress(params: Parameters):
-    _cache_dir = params.cache_dir.as_posix()
+    files_to_tar_gz = find_files_to_tar_gz(params)
 
-    find_expression = build_find_expression(params.cache_dir)
-    tar_expression = build_tar_gz_expression(params.cache_dir)
+    _tar_gz_path = params.cache_dir.joinpath("intermediate.data.tar.gz")
 
-    pipe(find_expression, tar_expression)
+    if _tar_gz_path.exists():
+        raise FileExistsError(_tar_gz_path)
+
+    tar_gz_path = _tar_gz_path.as_posix()
+
+    with tarfile.open(tar_gz_path, "w:gz") as tar:
+        for path in files_to_tar_gz:
+            print(f"adding {path} to tar archive")
+            tar.add(path)
+
+    for path in files_to_tar_gz:
+        os.remove(path)

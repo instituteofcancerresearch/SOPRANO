@@ -29,16 +29,16 @@ def build_find_expression(
     return expression
 
 
-def build_tar_expression(cache_dir: pathlib.Path):
-    tar_path = cache_dir / "intermediate.data.tar"
+def build_tar_gz_expression(cache_dir: pathlib.Path):
+    tar_gz_path = cache_dir / "intermediate.data.tar.gz"
 
-    return ["tar", "-cvf", tar_path.as_posix(), "--null", "-T", "-"]
+    return ["tar", "-cvzf", tar_gz_path.as_posix(), "--null", "-T", "-"]
 
 
 def tar_and_compress(params: Parameters):
     _cache_dir = params.cache_dir.as_posix()
 
     find_expression = build_find_expression(params.cache_dir)
-    tar_expression = build_tar_expression(params.cache_dir)
+    tar_expression = build_tar_gz_expression(params.cache_dir)
 
     pipe(find_expression, tar_expression)

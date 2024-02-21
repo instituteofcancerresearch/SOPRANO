@@ -498,6 +498,16 @@ class ComputeStatistics(_PipelineComponent):
         _compute_coverage(params)
 
 
+class TidyUp(_PipelineComponent):
+    msg = "Cleaning up files"
+
+    def check_ready(self, params: Parameters):
+        _check_paths(params.results_path)
+
+    def _apply(self, params: Parameters):
+        pass  # TODO: find . -type f ! -name "*.results.tsv"
+
+
 def run_pipeline(params: Parameters):
     jobs: List[_PipelineComponent] = [FilterTranscripts()]
 

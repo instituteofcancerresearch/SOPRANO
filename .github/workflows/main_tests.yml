@@ -28,6 +28,9 @@ jobs:
           activate-environment: soprano-dev
           environment-file: src/SOPRANO/ci_osx.yml  # additional coreutils
           use-mamba: true
+      - name: Decompress fasta
+        run: |
+          gunzip data/aux_soprano/ensemble_transcriptID.fasta.gz
       - name: Install SOPRANO
         run: |
           conda activate soprano-dev

@@ -1,7 +1,7 @@
 try:
     from mpi4py import MPI
 except ImportError:
-    import _MPI as MPI
+    import SOPRANO.utils._MPI as MPI
 
 from copy import deepcopy
 from typing import Callable

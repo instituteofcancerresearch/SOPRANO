@@ -3,6 +3,7 @@ from argparse import Namespace
 from dataclasses import dataclass
 from typing import Set
 
+from SOPRANO.utils.mpi_utils import COMM, item_selection
 from SOPRANO.utils.path_utils import Directories, genome_pars_to_paths
 from SOPRANO.utils.url_utils import (
     build_ensembl_urls,
@@ -277,6 +278,8 @@ class GlobalParameters:
         self.genomes = genomes
         self.n_samples = n_samples
 
+        self.get_all_samples(_init=True)
+
     def gather(self):
         pass
 
@@ -345,7 +348,7 @@ class GlobalParameters:
     def get_data(self):
         return self.get_sample(-1)
 
-    def get_sample(self, idx: int):
+    def get_sample(self, idx: int, _init=False):
         if not (-1 <= idx < self.n_samples):
             raise ValueError(
                 f"Index {idx} is out of range for number of samples: "
@@ -355,7 +358,12 @@ class GlobalParameters:
         sample_seed = self.seed + idx
         subdir_name = "data" if idx == -1 else "sample_%04d" % idx
         sample_cache = self.job_cache / subdir_name
-        sample_cache.mkdir(parents=True, exist_ok=True)
+
+        if _init:
+            if COMM.Get_rank() == 0:
+                sample_cache.mkdir(parents=True, exist_ok=True)
+            COMM.Barrier()
+            return
 
         sample_kwargs = self.__dict__.copy()
         del sample_kwargs["n_samples"]
@@ -364,15 +372,17 @@ class GlobalParameters:
         sample_kwargs["cache_dir"] = sample_cache
         sample_kwargs["analysis_name"] = subdir_name
 
-        print(sample_kwargs)
-
         return Parameters(**sample_kwargs)
 
-    def get_all_samples(self):
-        return [self.get_sample(idx) for idx in range(-1, self.n_samples)]
+    def get_all_samples(self, _init=False):
+        return [
+            self.get_sample(idx, _init=_init)
+            for idx in range(-1, self.n_samples)
+        ]
 
     def get_worker_samples(self):
-        return self.get_all_samples()  # TODO: distribute...
+        worker_samples = item_selection(self.get_all_samples())
+        return worker_samples
 
 
 class SOPRANOError(Exception):

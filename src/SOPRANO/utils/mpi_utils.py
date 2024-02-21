@@ -6,11 +6,15 @@ except ImportError:
 from copy import deepcopy
 from typing import Callable
 
-print(f"-- Loaded MPI module: {MPI.__file__}")
+COMM = MPI.COMM_WORLD
+RANK = COMM.Get_rank()
+SIZE = COMM.Get_size()
 
 
 def item_selection(
-    items_to_distribute: list | dict, mpi_rank: int, mpi_size: int
+    items_to_distribute: list | dict,
+    mpi_rank: int = RANK,
+    mpi_size: int = SIZE,
 ) -> list:
     if isinstance(items_to_distribute, dict):
         items_to_distribute = list(items_to_distribute.keys())
@@ -35,7 +39,9 @@ def item_selection(
 
 
 def as_single_process(
-    current_proc: int, mpi_comm: MPI.COMM_WORLD, executing_proc: int = 0
+    current_proc: int = RANK,
+    mpi_comm: MPI.COMM_WORLD = COMM,
+    executing_proc: int = 0,
 ):
     def decorator(function: Callable):
         def wrapper(*args, **kwargs):
@@ -43,6 +49,7 @@ def as_single_process(
                 result = function(*args, **kwargs)
             else:
                 result = None
+
             mpi_comm.Barrier()
             return result
 

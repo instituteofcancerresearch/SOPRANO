@@ -207,6 +207,15 @@ _NAMESPACE_KEYS = (
 )
 
 
+def check_cache_path(cache_dir: pathlib.Path, name: str) -> pathlib.Path:
+    if cache_dir.exists() and cache_dir.is_dir():
+        job_cache = cache_dir.joinpath(name)
+        job_cache.mkdir(exist_ok=True)
+        return job_cache
+    else:
+        raise NotADirectoryError(cache_dir)
+
+
 class Parameters(AnalysisPaths):
     def __init__(
         self,
@@ -221,7 +230,6 @@ class Parameters(AnalysisPaths):
         seed: int,
         transcripts: TranscriptPaths,
         genomes: GenomePaths,
-        n_samples: int,
     ):
         super().__init__(
             analysis_name, input_path, bed_path, cache_dir, random_regions
@@ -234,15 +242,66 @@ class Parameters(AnalysisPaths):
         self.use_random = use_random
         self.exclude_drivers = exclude_drivers
         self.seed = None if seed < 0 else seed
+
+
+class GlobalParameters:
+    def __init__(
+        self,
+        analysis_name: str,
+        input_path: pathlib.Path,
+        bed_path: pathlib.Path,
+        job_cache: pathlib.Path,
+        random_regions: pathlib.Path | None,
+        use_ssb192: bool,
+        use_random: bool,
+        exclude_drivers: bool,
+        seed: int,
+        transcripts: TranscriptPaths,
+        genomes: GenomePaths,
+        n_samples: int,
+    ):
+        # Sanitized
+        self.job_cache = check_cache_path(job_cache, analysis_name)
+        self.use_random = GlobalParameters.check_use_random(
+            use_random, n_samples
+        )
+        self.seed = GlobalParameters.check_seed(seed)
+
+        # Assumed OK
+        self.input_path = input_path
+        self.bed_path = bed_path
+        self.random_regions = random_regions
+        self.use_ssb192 = use_ssb192
+        self.exclude_drivers = exclude_drivers
+        self.transcripts = transcripts
+        self.genomes = genomes
         self.n_samples = n_samples
+
+    def gather(self):
+        pass
+
+    @staticmethod
+    def check_use_random(use_random: bool, n_samples: int):
+        if not use_random and n_samples > 0:
+            print(
+                f"WARNING: You have set use_random=False, "
+                f"but n_samples={n_samples}>0. Using use_random=True"
+            )
+            use_random = True
+        return use_random
+
+    @staticmethod
+    def check_seed(seed: int | None) -> int:
+        if seed is None or seed < 0:
+            print(f"WARNING: Random seed={seed}<0, assigning default: 1234.")
+            return 1234
+
+        return seed
 
     @classmethod
     def from_namespace(cls, namespace: Namespace):
-        for k in namespace.__dict__.keys():
-            assert k in _NAMESPACE_KEYS, k
-
-        for k in _NAMESPACE_KEYS:
-            assert k in namespace.__dict__.keys(), k
+        input_namespace_keys = set(namespace.__dict__.keys())
+        assert set(_NAMESPACE_KEYS) == input_namespace_keys
 
         transcripts = TranscriptPaths(
             namespace.transcript,
@@ -272,7 +331,7 @@ class Parameters(AnalysisPaths):
             analysis_name=namespace.analysis_name,
             input_path=namespace.input_path,
             bed_path=namespace.bed_path,
-            cache_dir=namespace.cache_dir,
+            job_cache=namespace.cache_dir,
             random_regions=namespace.random_regions,
             use_ssb192=namespace.use_ssb192,
             use_random=namespace.use_random,
@@ -282,6 +341,38 @@ class Parameters(AnalysisPaths):
             genomes=genomes,
             n_samples=n_samples,
         )
+
+    def get_data(self):
+        return self.get_sample(-1)
+
+    def get_sample(self, idx: int):
+        if not (-1 <= idx < self.n_samples):
+            raise ValueError(
+                f"Index {idx} is out of range for number of samples: "
+                f"{self.n_samples}"
+            )
+
+        sample_seed = self.seed + idx
+        subdir_name = "data" if idx == -1 else "sample_%04d" % idx
+        sample_cache = self.job_cache / subdir_name
+        sample_cache.mkdir(parents=True, exist_ok=True)
+
+        sample_kwargs = self.__dict__.copy()
+        del sample_kwargs["n_samples"]
+        del sample_kwargs["job_cache"]
+        sample_kwargs["seed"] = sample_seed
+        sample_kwargs["cache_dir"] = sample_cache
+        sample_kwargs["analysis_name"] = subdir_name
+
+        print(sample_kwargs)
+
+        return Parameters(**sample_kwargs)
+
+    def get_all_samples(self):
+        return [self.get_sample(idx) for idx in range(-1, self.n_samples)]
+
+    def get_worker_samples(self):
+        return self.get_all_samples()  # TODO: distribute...
 
 
 class SOPRANOError(Exception):

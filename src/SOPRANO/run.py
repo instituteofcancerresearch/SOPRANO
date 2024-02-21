@@ -22,8 +22,15 @@ from SOPRANO.utils.vep_utils import (
 def run_cli(_namespace=None):
     cli_args = parse_args() if _namespace is None else _namespace
     startup_output(**cli_args.__dict__)
-    params = objects.Parameters.from_namespace(cli_args)
-    run_pipeline(params)
+
+    global_parameters = objects.GlobalParameters.from_namespace(cli_args)
+
+    worker_samples_parameters = global_parameters.get_worker_samples()
+
+    for parameters in worker_samples_parameters:
+        run_pipeline(parameters)
+
+    global_parameters.gather()
 
 
 def run_app():
@@ -35,6 +42,7 @@ def link_vep_cache():
     src_cache = parse_link_vep_cache_args()
     src_dst_links = _get_src_dst_link_pairs(src_cache)
     _link_src_dst_pairs(src_dst_links)
+    # TODO: Just use _link_vep_cache !
 
 
 def download_genome():

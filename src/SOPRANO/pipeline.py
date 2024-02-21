@@ -1,3 +1,4 @@
+import pathlib
 from typing import List
 
 from SOPRANO.core.analysis import (
@@ -45,6 +46,7 @@ from SOPRANO.core.prepare_coordinates import (
     filter_transcript_files,
     transform_coordinates,
 )
+from SOPRANO.core.tidy import tar_and_compress
 from SOPRANO.utils.path_utils import _check_paths
 from SOPRANO.utils.print_utils import task_output
 
@@ -53,12 +55,25 @@ AuxiliaryFiles = AuxiliaryPaths.defaults()
 
 class _PipelineComponent:
     msg: str | None = None  # Will be printed to stdout with date/time stamp
+    tag: str
+
+    def _get_component_complete_path(self, params: Parameters) -> pathlib.Path:
+        return params.cache_dir.joinpath(f"pipe_{self.tag}.complete")
+
+    def _component_complete(self, params: Parameters) -> bool:
+        return self._get_component_complete_path(params).exists()
+
+    def _mark_as_complete(self, params: Parameters):
+        self._get_component_complete_path(params).touch(exist_ok=False)
 
     def apply(self, params: Parameters):
         if self.msg is not None:
             task_output(self.msg)
-        self.check_ready(params)
-        self._apply(params)
+
+        if not self._component_complete(params):
+            self.check_ready(params)
+            self._apply(params)
+            self._mark_as_complete(params)
 
     def _apply(self, params: Parameters):
         pass
@@ -66,9 +81,13 @@ class _PipelineComponent:
     def check_ready(self, params: Parameters):
         pass
 
+    def done(self):
+        pass
+
 
 class FilterTranscripts(_PipelineComponent):
     msg = "Filtering transcripts"
+    tag = "filter_transcripts"
 
     def _apply(self, params: Parameters):
         filter_transcript_files(params, params.transcripts)
@@ -83,6 +102,8 @@ class FilterTranscripts(_PipelineComponent):
 
 class _Randomize(_PipelineComponent):
     """Intermediate class for randomization procedures"""
+
+    tag = "randomize"
 
     def check_ready(self, params: Parameters):
         _check_paths(
@@ -116,6 +137,8 @@ class RandomizeWithRegions(_Randomize):
 
 
 class _GeneExclusions(_PipelineComponent):
+    tag = "gene_exclusions"
+
     def check_ready(self, params: Parameters):
         _check_paths(params.exclusions_shuffled)
 
@@ -136,6 +159,7 @@ class GeneExclusionsDisabled(_GeneExclusions):
 
 class BuildProteinComplement(_PipelineComponent):
     msg = "Building protein complement"
+    tag = "build_protein_complement"
 
     def check_ready(self, params: Parameters):
         _check_paths(params.epitopes, params.filtered_protein_transcript)
@@ -146,6 +170,7 @@ class BuildProteinComplement(_PipelineComponent):
 
 class PrepSSBSelection(_PipelineComponent):
     msg = "Preparing coordinates"
+    tag = "prep_ssb"
 
     def check_ready(self, params: Parameters):
         _check_paths(params.epitopes)
@@ -159,6 +184,7 @@ class PrepSSBSelection(_PipelineComponent):
 
 class BuildIntraEpitopesCDS(_PipelineComponent):
     msg = "Building intra epitope file in CDS coordinates"
+    tag = "build_intra_epitopes"
 
     def check_ready(self, params: Parameters):
         _check_paths(
@@ -173,6 +199,7 @@ class BuildIntraEpitopesCDS(_PipelineComponent):
 
 class ObtainFastaRegions(_PipelineComponent):
     msg = "Obtaining fasta regions"
+    tag = "obtain_fasta_regions"
 
     def check_ready(self, params: Parameters):
         _check_paths(
@@ -188,6 +215,7 @@ class ObtainFastaRegions(_PipelineComponent):
 
 class GetTranscriptRegionsForSites(_PipelineComponent):
     msg = "Compiling list of transcript:regions to estimate number of sites"
+    tag = "get_transcript_regions_for_sites"
 
     def check_ready(self, params: Parameters):
         _check_paths(params.epitopes_cds_fasta, params.intra_epitopes_cds)
@@ -201,6 +229,7 @@ class GetTranscriptRegionsForSites(_PipelineComponent):
 
 class ComputeTheoreticalSubs(_PipelineComponent):
     msg = "Computing all theoretical substitutions"
+    tag = "compute_theoretical_subs"
 
     def check_ready(self, params: Parameters):
         _check_paths(
@@ -224,6 +253,7 @@ class ComputeTheoreticalSubs(_PipelineComponent):
 
 class SumPossibleAcrossRegions(_PipelineComponent):
     msg = "Computing sum over possible sites in on and off target regions"
+    tag = "sum_possible_regions"
 
     def check_ready(self, params: Parameters):
         _check_paths(
@@ -241,7 +271,8 @@ class SumPossibleAcrossRegions(_PipelineComponent):
 
 
 class FixSimulated(_PipelineComponent):
-    # TODO: Fix msg
+    msg = "Fixing simulated components"
+    tag = "fix_simulated"
 
     def check_ready(self, params: Parameters):
         # TODO
@@ -253,6 +284,7 @@ class FixSimulated(_PipelineComponent):
 
 class ColumnCorrect(_PipelineComponent):
     msg = "Applying column corrections"
+    tag = "column_correct"
 
     def check_ready(self, params: Parameters):
         _check_paths(params.sim_fixed)
@@ -263,6 +295,7 @@ class ColumnCorrect(_PipelineComponent):
 
 class ContextCorrection(_PipelineComponent):
     msg = "Applying context corrections"
+    tag = "context_correction"
 
     def check_ready(self, params: Parameters):
         _check_paths(
@@ -277,6 +310,7 @@ class ContextCorrection(_PipelineComponent):
 
 class FlagComputations(_PipelineComponent):
     msg = "Flagging calculations"
+    tag = "flag_computations"
 
     def check_ready(self, params: Parameters):
         _check_paths(params.col_corrected, params.contextualised)
@@ -287,6 +321,7 @@ class FlagComputations(_PipelineComponent):
 
 class TripletCounts(_PipelineComponent):
     msg = "Counting triplets"
+    tag = "triplet_counts"
 
     def check_ready(self, params: Parameters):
         _check_paths(
@@ -302,6 +337,7 @@ class TripletCounts(_PipelineComponent):
 
 class SiteCorrections(_PipelineComponent):
     msg = "Performing site corrections"
+    tag = "site_corrections"
 
     def check_ready(self, params: Parameters):
         _check_paths(
@@ -320,6 +356,7 @@ class SiteCorrections(_PipelineComponent):
 
 class IntersectByFrequency(_PipelineComponent):
     msg = "Intersecting by frequencies"
+    tag = "intersect_by_frequency"
 
     def check_ready(self, params: Parameters):
         _check_paths(
@@ -338,6 +375,7 @@ class IntersectByFrequency(_PipelineComponent):
 
 class GetSilentCounts(_PipelineComponent):
     msg = "Computing silent mutation counts"
+    tag = "get_silent_counts"
 
     def _apply(self, params: Parameters):
         _get_silent_variant_counts(params)
@@ -345,6 +383,7 @@ class GetSilentCounts(_PipelineComponent):
 
 class GetNonSilentCounts(_PipelineComponent):
     msg = "Computing non-silent mutation counts"
+    tag = "get_non_silent_counts"
 
     def _apply(self, params: Parameters):
         _get_nonsilent_variant_counts(params)
@@ -352,6 +391,7 @@ class GetNonSilentCounts(_PipelineComponent):
 
 class GetMissenseCounts(_PipelineComponent):
     msg = "Computing missense mutation counts"
+    tag = "get_missense_counts"
 
     def _apply(self, params: Parameters):
         _get_missense_variant_counts(params)
@@ -359,6 +399,7 @@ class GetMissenseCounts(_PipelineComponent):
 
 class GetIntronicCounts(_PipelineComponent):
     msg = "Computing intronic mutation counts"
+    tag = "get_intronic_counts"
 
     def _apply(self, params: Parameters):
         _get_intronic_variant_counts(params)
@@ -366,6 +407,7 @@ class GetIntronicCounts(_PipelineComponent):
 
 class OnOffCounts(_PipelineComponent):
     msg = "Computing summary of global/on/off region counts"
+    tag = "on_off_counts"
 
     def check_ready(self, params: Parameters):
         _check_paths(
@@ -427,6 +469,7 @@ class OnOffCounts(_PipelineComponent):
 
 class BuildEpitopesDataFile(_PipelineComponent):
     msg = "Building epitope combined data file"
+    tag = "build_epitope_data_file"
 
     def check_ready(self, params: Parameters):
         _check_paths(
@@ -461,6 +504,7 @@ class BuildEpitopesDataFile(_PipelineComponent):
 
 class CheckTargetMutations(_PipelineComponent):
     msg = "Checking target mutations"
+    tag = "check_target_mutations"
 
     def check_ready(self, params: Parameters):
         _check_paths(
@@ -475,6 +519,7 @@ class CheckTargetMutations(_PipelineComponent):
 
 class ComputeIntronRate(_PipelineComponent):
     msg = "Computing intronic rate"
+    tag = "compute_intronic"
 
     def check_ready(self, params: Parameters):
         _check_paths(params.variants_intronic)
@@ -485,6 +530,7 @@ class ComputeIntronRate(_PipelineComponent):
 
 class ComputeStatistics(_PipelineComponent):
     msg = "Computing dN/dS statistical summary"
+    tag = "compute_stats"
 
     def check_ready(self, params: Parameters):
         _check_paths(
@@ -496,6 +542,17 @@ class ComputeStatistics(_PipelineComponent):
 
     def _apply(self, params: Parameters):
         _compute_coverage(params)
+
+
+class TidyUp(_PipelineComponent):
+    msg = "Cleaning up files"
+    tag = "tidy"
+
+    def check_ready(self, params: Parameters):
+        _check_paths(params.results_path)
+
+    def _apply(self, params: Parameters):
+        tar_and_compress(params)
 
 
 def run_pipeline(params: Parameters):
@@ -536,6 +593,7 @@ def run_pipeline(params: Parameters):
     jobs.append(CheckTargetMutations())
     jobs.append(ComputeIntronRate())
     jobs.append(ComputeStatistics())
+    jobs.append(TidyUp())
 
     for job in jobs:
         job.apply(params)

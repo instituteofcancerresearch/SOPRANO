@@ -4,7 +4,7 @@ import tarfile
 
 from SOPRANO.core.objects import Parameters
 
-_PATTERNS_TO_IGNORE = ("*results.tsv", "*.log")
+_PATTERNS_TO_IGNORE = ("*results.tsv", "*.log", "*.complete")
 
 
 def find_files_to_tar_gz(params: Parameters):

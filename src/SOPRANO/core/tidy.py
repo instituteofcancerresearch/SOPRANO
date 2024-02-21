@@ -1,5 +1,8 @@
 import pathlib
 
+from SOPRANO.core.objects import Parameters
+from SOPRANO.utils.sh_utils import pipe
+
 _PATTERNS_TO_IGNORE = ("*results.tsv", "*.log")
 
 
@@ -21,6 +24,21 @@ def build_find_expression(
         if n_patterns > 0:
             expression.append("-o")
 
-    expression.append(r"\)")
+    expression += [r"\)", "-print0"]
 
     return expression
+
+
+def build_tar_expression(cache_dir: pathlib.Path):
+    tar_path = cache_dir / "intermediate.data.tar"
+
+    return ["tar", "-cvf", tar_path.as_posix(), "--null", "-T", "-"]
+
+
+def tar_and_compress(params: Parameters):
+    _cache_dir = params.cache_dir.as_posix()
+
+    find_expression = build_find_expression(params.cache_dir)
+    tar_expression = build_tar_expression(params.cache_dir)
+
+    pipe(find_expression, tar_expression)

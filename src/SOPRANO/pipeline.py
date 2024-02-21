@@ -45,6 +45,7 @@ from SOPRANO.core.prepare_coordinates import (
     filter_transcript_files,
     transform_coordinates,
 )
+from SOPRANO.core.tidy import tar_and_compress
 from SOPRANO.utils.path_utils import _check_paths
 from SOPRANO.utils.print_utils import task_output
 
@@ -505,7 +506,7 @@ class TidyUp(_PipelineComponent):
         _check_paths(params.results_path)
 
     def _apply(self, params: Parameters):
-        pass  # TODO: find . -type f ! -name "*.results.tsv"
+        tar_and_compress(params)
 
 
 def run_pipeline(params: Parameters):
@@ -546,6 +547,7 @@ def run_pipeline(params: Parameters):
     jobs.append(CheckTargetMutations())
     jobs.append(ComputeIntronRate())
     jobs.append(ComputeStatistics())
+    jobs.append(TidyUp())
 
     for job in jobs:
         job.apply(params)

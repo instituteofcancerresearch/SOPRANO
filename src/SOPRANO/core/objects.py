@@ -1,9 +1,10 @@
+import json
 import pathlib
 from argparse import Namespace
 from dataclasses import dataclass
 from typing import Set
 
-from SOPRANO.utils.mpi_utils import COMM, item_selection
+from SOPRANO.utils.mpi_utils import COMM, as_single_process, item_selection
 from SOPRANO.utils.path_utils import Directories, genome_pars_to_paths
 from SOPRANO.utils.url_utils import (
     build_ensembl_urls,
@@ -279,6 +280,73 @@ class GlobalParameters:
         self.n_samples = n_samples
 
         self.get_all_samples(_init=True)
+        self.cache_ordered_params()
+
+    def get_ordered_params(self):
+        kwargs = self.__dict__.copy()
+
+        def expand_kwargs(d: dict):
+            print(d.keys())
+
+            _rerun = False
+
+            for key, value in d.items():
+                if hasattr(value, "__dict__"):
+                    d2 = value.__dict__
+                    del d[key]
+                    d.update(d2)
+                    _rerun = True
+                    break
+
+            if _rerun:
+                return expand_kwargs(d)
+
+            return d
+
+        del kwargs["n_samples"]
+
+        expanded = expand_kwargs(kwargs)
+
+        return {k: str(kwargs[k]) for k in sorted(expanded)}
+
+    def get_params_path(self):
+        return self.job_cache / "pipeline.params"
+
+    @as_single_process()
+    def cache_ordered_params(self):
+        params_path = self.get_params_path()
+
+        if not params_path.exists():
+            ordered_params = self.get_ordered_params()
+
+            with open(params_path, "w") as f:
+                json.dump(ordered_params, f, indent=4)
+        else:
+            self.check_params()
+
+    def check_params(self):
+        current_params = self.get_ordered_params()
+        cached_params_path = self.get_params_path()
+
+        with open(cached_params_path, "r") as f:
+            cached_params = json.load(f)
+
+        current_param_keys = tuple(current_params.keys())
+        cached_param_keys = tuple(cached_params.keys())
+
+        if current_param_keys != cached_param_keys:
+            raise KeyError(f"{current_param_keys} != {cached_param_keys}")
+
+        for _key in current_param_keys:
+            current_value = current_params[_key]
+            cached_value = cached_params[_key]
+
+            if current_value != cached_value:
+                raise ValueError(
+                    f"Value mismatch @ {_key}: "
+                    f"{current_value} != {cached_value}.\n"
+                    f"Different pipeline runs must have distinct directories!"
+                )
 
     def gather(self):
         pass

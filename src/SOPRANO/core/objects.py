@@ -188,6 +188,9 @@ class AnalysisPaths:
 
         return self.cache_dir.joinpath(file_name)
 
+    def is_complete(self):
+        return self.results_path.exists()
+
 
 _NAMESPACE_KEYS = (
     "analysis_name",
@@ -199,7 +202,6 @@ _NAMESPACE_KEYS = (
     "protein_transcript",
     "transcript_ids",
     "use_ssb192",
-    "use_random",
     "keep_drivers",
     "seed",
     "species",
@@ -229,7 +231,7 @@ class Parameters(AnalysisPaths):
         use_ssb192: bool,
         use_random: bool,
         exclude_drivers: bool,
-        seed: int,
+        seed: int | None,
         transcripts: TranscriptPaths,
         genomes: GenomePaths,
     ):
@@ -243,7 +245,7 @@ class Parameters(AnalysisPaths):
         self.use_random_regions = random_regions is not None
         self.use_random = use_random
         self.exclude_drivers = exclude_drivers
-        self.seed = None if seed < 0 else seed
+        self.seed = seed
 
 
 class GlobalParameters:
@@ -255,18 +257,14 @@ class GlobalParameters:
         job_cache: pathlib.Path,
         random_regions: pathlib.Path | None,
         use_ssb192: bool,
-        use_random: bool,
         exclude_drivers: bool,
-        seed: int,
+        seed: int | None,
         transcripts: TranscriptPaths,
         genomes: GenomePaths,
         n_samples: int,
     ):
         # Sanitized
         self.job_cache = check_cache_path(job_cache, analysis_name)
-        self.use_random = GlobalParameters.check_use_random(
-            use_random, n_samples
-        )
         self.seed = GlobalParameters.check_seed(seed)
 
         # Assumed OK
@@ -286,8 +284,6 @@ class GlobalParameters:
         kwargs = self.__dict__.copy()
 
         def expand_kwargs(d: dict):
-            print(d.keys())
-
             _rerun = False
 
             for key, value in d.items():
@@ -352,16 +348,6 @@ class GlobalParameters:
         pass
 
     @staticmethod
-    def check_use_random(use_random: bool, n_samples: int):
-        if not use_random and n_samples > 0:
-            print(
-                f"WARNING: You have set use_random=False, "
-                f"but n_samples={n_samples}>0. Using use_random=True"
-            )
-            use_random = True
-        return use_random
-
-    @staticmethod
     def check_seed(seed: int | None) -> int:
         if seed is None or seed < 0:
             print(f"WARNING: Random seed={seed}<0, assigning default: 1234.")
@@ -371,8 +357,11 @@ class GlobalParameters:
 
     @classmethod
     def from_namespace(cls, namespace: Namespace):
-        input_namespace_keys = set(namespace.__dict__.keys())
-        assert set(_NAMESPACE_KEYS) == input_namespace_keys
+        input_namespace_keys = namespace.__dict__.keys()
+        if set(_NAMESPACE_KEYS) != set(input_namespace_keys):
+            raise KeyError(
+                f"{sorted(_NAMESPACE_KEYS)} != {sorted(input_namespace_keys)}"
+            )
 
         transcripts = TranscriptPaths(
             namespace.transcript,
@@ -405,7 +394,6 @@ class GlobalParameters:
             job_cache=namespace.cache_dir,
             random_regions=namespace.random_regions,
             use_ssb192=namespace.use_ssb192,
-            use_random=namespace.use_random,
             exclude_drivers=not namespace.keep_drivers,
             seed=namespace.seed,
             transcripts=transcripts,
@@ -423,9 +411,10 @@ class GlobalParameters:
                 f"{self.n_samples}"
             )
 
-        sample_seed = self.seed + idx
+        sample_seed = self.seed + idx if idx > -1 else None
         subdir_name = "data" if idx == -1 else "sample_%04d" % idx
         sample_cache = self.job_cache / subdir_name
+        use_random = idx > -1
 
         if _init:
             if COMM.Get_rank() == 0:
@@ -439,14 +428,18 @@ class GlobalParameters:
         sample_kwargs["seed"] = sample_seed
         sample_kwargs["cache_dir"] = sample_cache
         sample_kwargs["analysis_name"] = subdir_name
+        sample_kwargs["use_random"] = use_random
 
         return Parameters(**sample_kwargs)
 
     def get_all_samples(self, _init=False):
-        return [
+        samples = [
             self.get_sample(idx, _init=_init)
             for idx in range(-1, self.n_samples)
         ]
+
+        if not _init:
+            return [s for s in samples if not s.is_complete()]
 
     def get_worker_samples(self):
         worker_samples = item_selection(self.get_all_samples())

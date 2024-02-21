@@ -129,7 +129,6 @@ def test_pipeline_ssb192(tmp_path):
         seed=-1,
         transcripts=objects.TranscriptPaths.defaults(),
         genomes=objects.GenomePaths.GRCh37(),
-        n_samples=0,
     )
     _run_and_assert(params)
 
@@ -162,7 +161,6 @@ def test_pipeline_ssb7(tmp_path):
         seed=-1,
         transcripts=objects.TranscriptPaths.defaults(),
         genomes=objects.GenomePaths.GRCh37(),
-        n_samples=0,
     )
 
     _run_and_assert(params)
@@ -197,7 +195,6 @@ def test_pipeline_ssb7_random(tmp_path):
         seed=333,
         transcripts=objects.TranscriptPaths.defaults(),
         genomes=objects.GenomePaths.GRCh37(),
-        n_samples=0,
     )
 
     _run_and_assert(params)

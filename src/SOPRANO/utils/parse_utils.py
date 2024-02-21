@@ -126,13 +126,13 @@ def parse_args(argv=None):
         help="If flag is used ssb192 will be used, otherwise ssb7.",
     )
 
-    analysis_params_group.add_argument(
-        "--use_random",
-        dest="use_random",
-        action="store_true",
-        help="If flag is used, calculate a dNdS value for a random region "
-        "similar to the target.",
-    )
+    # analysis_params_group.add_argument(
+    #     "--use_random",
+    #     dest="use_random",
+    #     action="store_true",
+    #     help="If flag is used, calculate a dNdS value for a random region "
+    #     "similar to the target.",
+    # )
 
     analysis_params_group.add_argument(
         "--keep_drivers",
@@ -150,6 +150,15 @@ def parse_args(argv=None):
         type=int,
         help="Provide seed value for shuffle process in randomization. "
         "If seed value is < 0, no seed value will be applied.",
+    )
+
+    analysis_params_group.add_argument(
+        "--n_samples",
+        "-z",
+        dest="n_samples",
+        default=0,
+        type=int,
+        help="Provide number of samples to use in dNdS error estimates.",
     )
 
     transcript_args = parser.add_argument_group()

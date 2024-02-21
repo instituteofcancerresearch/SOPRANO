@@ -1,8 +1,10 @@
+import json
 import pathlib
 from argparse import Namespace
 from dataclasses import dataclass
 from typing import Set
 
+from SOPRANO.utils.mpi_utils import COMM, as_single_process, item_selection
 from SOPRANO.utils.path_utils import Directories, genome_pars_to_paths
 from SOPRANO.utils.url_utils import (
     build_ensembl_urls,
@@ -186,6 +188,9 @@ class AnalysisPaths:
 
         return self.cache_dir.joinpath(file_name)
 
+    def is_complete(self):
+        return self.results_path.exists()
+
 
 _NAMESPACE_KEYS = (
     "analysis_name",
@@ -197,13 +202,22 @@ _NAMESPACE_KEYS = (
     "protein_transcript",
     "transcript_ids",
     "use_ssb192",
-    "use_random",
     "keep_drivers",
     "seed",
     "species",
     "assembly",
     "release",
+    "n_samples",
 )
+
+
+def check_cache_path(cache_dir: pathlib.Path, name: str) -> pathlib.Path:
+    if cache_dir.exists() and cache_dir.is_dir():
+        job_cache = cache_dir.joinpath(name)
+        job_cache.mkdir(exist_ok=True)
+        return job_cache
+    else:
+        raise NotADirectoryError(cache_dir)
 
 
 class Parameters(AnalysisPaths):
@@ -217,7 +231,7 @@ class Parameters(AnalysisPaths):
         use_ssb192: bool,
         use_random: bool,
         exclude_drivers: bool,
-        seed: int,
+        seed: int | None,
         transcripts: TranscriptPaths,
         genomes: GenomePaths,
     ):
@@ -231,15 +245,123 @@ class Parameters(AnalysisPaths):
         self.use_random_regions = random_regions is not None
         self.use_random = use_random
         self.exclude_drivers = exclude_drivers
-        self.seed = None if seed < 0 else seed
+        self.seed = seed
+
+
+class GlobalParameters:
+    def __init__(
+        self,
+        analysis_name: str,
+        input_path: pathlib.Path,
+        bed_path: pathlib.Path,
+        job_cache: pathlib.Path,
+        random_regions: pathlib.Path | None,
+        use_ssb192: bool,
+        exclude_drivers: bool,
+        seed: int | None,
+        transcripts: TranscriptPaths,
+        genomes: GenomePaths,
+        n_samples: int,
+    ):
+        # Sanitized
+        self.job_cache = check_cache_path(job_cache, analysis_name)
+        self.seed = GlobalParameters.check_seed(seed)
+
+        # Assumed OK
+        self.input_path = input_path
+        self.bed_path = bed_path
+        self.random_regions = random_regions
+        self.use_ssb192 = use_ssb192
+        self.exclude_drivers = exclude_drivers
+        self.transcripts = transcripts
+        self.genomes = genomes
+        self.n_samples = n_samples
+
+        self.get_all_samples(_init=True)
+        self.cache_ordered_params()
+
+    def get_ordered_params(self):
+        kwargs = self.__dict__.copy()
+
+        def expand_kwargs(d: dict):
+            _rerun = False
+
+            for key, value in d.items():
+                if hasattr(value, "__dict__"):
+                    d2 = value.__dict__
+                    del d[key]
+                    d.update(d2)
+                    _rerun = True
+                    break
+
+            if _rerun:
+                return expand_kwargs(d)
+
+            return d
+
+        del kwargs["n_samples"]
+
+        expanded = expand_kwargs(kwargs)
+
+        return {k: str(kwargs[k]) for k in sorted(expanded)}
+
+    def get_params_path(self):
+        return self.job_cache / "pipeline.params"
+
+    @as_single_process()
+    def cache_ordered_params(self):
+        params_path = self.get_params_path()
+
+        if not params_path.exists():
+            ordered_params = self.get_ordered_params()
+
+            with open(params_path, "w") as f:
+                json.dump(ordered_params, f, indent=4)
+        else:
+            self.check_params()
+
+    def check_params(self):
+        current_params = self.get_ordered_params()
+        cached_params_path = self.get_params_path()
+
+        with open(cached_params_path, "r") as f:
+            cached_params = json.load(f)
+
+        current_param_keys = tuple(current_params.keys())
+        cached_param_keys = tuple(cached_params.keys())
+
+        if current_param_keys != cached_param_keys:
+            raise KeyError(f"{current_param_keys} != {cached_param_keys}")
+
+        for _key in current_param_keys:
+            current_value = current_params[_key]
+            cached_value = cached_params[_key]
+
+            if current_value != cached_value:
+                raise ValueError(
+                    f"Value mismatch @ {_key}: "
+                    f"{current_value} != {cached_value}.\n"
+                    f"Different pipeline runs must have distinct directories!"
+                )
+
+    def gather(self):
+        pass
+
+    @staticmethod
+    def check_seed(seed: int | None) -> int:
+        if seed is None or seed < 0:
+            print(f"WARNING: Random seed={seed}<0, assigning default: 1234.")
+            return 1234
+
+        return seed
 
     @classmethod
     def from_namespace(cls, namespace: Namespace):
-        for k in namespace.__dict__.keys():
-            assert k in _NAMESPACE_KEYS, k
-
-        for k in _NAMESPACE_KEYS:
-            assert k in namespace.__dict__.keys(), k
+        input_namespace_keys = namespace.__dict__.keys()
+        if set(_NAMESPACE_KEYS) != set(input_namespace_keys):
+            raise KeyError(
+                f"{sorted(_NAMESPACE_KEYS)} != {sorted(input_namespace_keys)}"
+            )
 
         transcripts = TranscriptPaths(
             namespace.transcript,
@@ -263,19 +385,65 @@ class Parameters(AnalysisPaths):
                 species=species, assembly=assembly
             ).get_genome_reference_paths(release)
 
+        n_samples = namespace.n_samples
+
         return cls(
             analysis_name=namespace.analysis_name,
             input_path=namespace.input_path,
             bed_path=namespace.bed_path,
-            cache_dir=namespace.cache_dir,
+            job_cache=namespace.cache_dir,
             random_regions=namespace.random_regions,
             use_ssb192=namespace.use_ssb192,
-            use_random=namespace.use_random,
             exclude_drivers=not namespace.keep_drivers,
             seed=namespace.seed,
             transcripts=transcripts,
             genomes=genomes,
+            n_samples=n_samples,
         )
+
+    def get_data(self):
+        return self.get_sample(-1)
+
+    def get_sample(self, idx: int, _init=False):
+        if not (-1 <= idx < self.n_samples):
+            raise ValueError(
+                f"Index {idx} is out of range for number of samples: "
+                f"{self.n_samples}"
+            )
+
+        sample_seed = self.seed + idx if idx > -1 else None
+        subdir_name = "data" if idx == -1 else "sample_%04d" % idx
+        sample_cache = self.job_cache / subdir_name
+        use_random = idx > -1
+
+        if _init:
+            if COMM.Get_rank() == 0:
+                sample_cache.mkdir(parents=True, exist_ok=True)
+            COMM.Barrier()
+            return
+
+        sample_kwargs = self.__dict__.copy()
+        del sample_kwargs["n_samples"]
+        del sample_kwargs["job_cache"]
+        sample_kwargs["seed"] = sample_seed
+        sample_kwargs["cache_dir"] = sample_cache
+        sample_kwargs["analysis_name"] = subdir_name
+        sample_kwargs["use_random"] = use_random
+
+        return Parameters(**sample_kwargs)
+
+    def get_all_samples(self, _init=False):
+        samples = [
+            self.get_sample(idx, _init=_init)
+            for idx in range(-1, self.n_samples)
+        ]
+
+        if not _init:
+            return [s for s in samples if not s.is_complete()]
+
+    def get_worker_samples(self):
+        worker_samples = item_selection(self.get_all_samples())
+        return worker_samples
 
 
 class SOPRANOError(Exception):

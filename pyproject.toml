@@ -48,7 +48,11 @@ dev = [
     "pytest-dependency",
     "isort",
     "pre-commit",
-    "mypy"
+    "mypy",
+    "mpi4py"
+]
+mpi = [
+    "mpi4py"
 ]
 ci = [
     "black",

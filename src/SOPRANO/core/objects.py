@@ -1,10 +1,16 @@
 import json
+import logging
 import pathlib
 from argparse import Namespace
 from dataclasses import dataclass
 from typing import Set
 
-from SOPRANO.utils.mpi_utils import COMM, as_single_process, item_selection
+from SOPRANO.utils.mpi_utils import (
+    COMM,
+    RANK,
+    as_single_process,
+    item_selection,
+)
 from SOPRANO.utils.path_utils import Directories, genome_pars_to_paths
 from SOPRANO.utils.url_utils import (
     build_ensembl_urls,
@@ -222,6 +228,27 @@ def check_cache_path(cache_dir: pathlib.Path, name: str) -> pathlib.Path:
         raise NotADirectoryError(cache_dir)
 
 
+def init_logger(name: str, log_path: pathlib.Path):
+    LOG_LEVEL = logging.INFO
+
+    proc_rank = "%04d" % RANK
+
+    LOG_FORMAT = f"%(asctime)s | proc {proc_rank} | %(message)s"
+
+    formatter = logging.Formatter(LOG_FORMAT)
+
+    logger = logging.getLogger(name)
+    logger.setLevel(LOG_LEVEL)
+
+    log_file_handler = logging.FileHandler(log_path.as_posix())
+    log_file_handler.setLevel(LOG_LEVEL)
+    log_file_handler.setFormatter(formatter)
+
+    logger.addHandler(log_file_handler)
+
+    return logger
+
+
 class Parameters(AnalysisPaths):
     def __init__(
         self,
@@ -248,6 +275,12 @@ class Parameters(AnalysisPaths):
         self.use_random = use_random
         self.exclude_drivers = exclude_drivers
         self.seed = seed
+        self.logger = init_logger(self.analysis_name, self.log_path)
+
+        self.log("parameters initialized")
+
+    def log(self, msg: str) -> None:
+        self.logger.info(msg)
 
 
 class GlobalParameters:

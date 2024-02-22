@@ -229,19 +229,16 @@ def check_cache_path(cache_dir: pathlib.Path, name: str) -> pathlib.Path:
 
 
 def init_logger(name: str, log_path: pathlib.Path):
-    LOG_LEVEL = logging.INFO
-
+    log_level = logging.INFO
     proc_rank = "%04d" % RANK
-
-    LOG_FORMAT = f"%(asctime)s | proc {proc_rank} | %(message)s"
-
-    formatter = logging.Formatter(LOG_FORMAT)
+    log_format = f"%(asctime)s | proc {proc_rank} | %(message)s"
+    formatter = logging.Formatter(log_format)
 
     logger = logging.getLogger(name)
-    logger.setLevel(LOG_LEVEL)
+    logger.setLevel(log_level)
 
     log_file_handler = logging.FileHandler(log_path.as_posix())
-    log_file_handler.setLevel(LOG_LEVEL)
+    log_file_handler.setLevel(log_level)
     log_file_handler.setFormatter(formatter)
 
     logger.addHandler(log_file_handler)

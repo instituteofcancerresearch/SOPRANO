@@ -178,7 +178,9 @@ class AnalysisPaths:
 
         self.intron_rate = self._cached_path("intron", "rate")
 
-        self.results_path = self._cached_path("results.tsv")
+        self.results_path = self._cached_path("results", "tsv")
+
+        self.log_path = self._cached_path("log")
 
     def _cached_path(self, *extensions):
         file_name = f"{self.analysis_name}"

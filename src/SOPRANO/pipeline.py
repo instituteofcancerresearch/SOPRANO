@@ -69,6 +69,7 @@ class _PipelineComponent:
     def apply(self, params: Parameters):
         if self.msg is not None:
             task_output(self.msg)
+            params.log(self.msg)
 
         if not self._component_complete(params):
             self.check_ready(params)

@@ -462,9 +462,10 @@ class GlobalParameters:
         exonic_hist_type = "stepfilled"
         exonic_intronic_hist_type = "step"
 
-        fig, axs = plt.subplots(1, 2, figsize=(8, 4))
+        fig, axs = plt.subplots(1, 2, figsize=(8, 4), sharey=True)
 
         axs[0].set_title("ON")
+        axs[0].set_ylabel("$P(dN/dS)$")
         axs[1].set_title("OFF")
 
         for data, avail, lab, col, alpha, hatch, hist_type in zip(
@@ -492,15 +493,14 @@ class GlobalParameters:
                     **kwargs,
                 )
                 axs[1].hist(
-                    data["ON_dNdS"],
+                    data["OFF_dNdS"],
                     **kwargs,
                 )
 
         for ax in axs:
             ax.grid()
             ax.set_xlabel("$dN/dS$")
-            ax.set_ylabel("$P(dN/dS)$")
-            ax.legend(loc="upper right", frameon=False)
+            ax.legend(loc="best", frameon=False)
 
         plt.tight_layout()
         plt.savefig(self.job_cache.joinpath("hist.pdf"), bbox_inches="tight")

@@ -405,14 +405,15 @@ class GlobalParameters:
 
         with open(samples_meta_path, "w") as f:
             for path in sample_results_paths:
-                if joined_df:
-                    joined_df = pd.concat(
-                        pd.read_csv(path, sep="\t"), ignore_index=True
-                    )
-                else:
+                if joined_df is None:
                     joined_df = pd.read_csv(path, sep="\t")
+                else:
+                    joined_df = pd.concat(
+                        [joined_df, pd.read_csv(path, sep="\t")],
+                        ignore_index=True,
+                    )
 
-            f.write(f"{path.as_posix()}\n")
+                f.write(f"{path.as_posix()}\n")
 
         joined_df.to_csv(samples_path)
 

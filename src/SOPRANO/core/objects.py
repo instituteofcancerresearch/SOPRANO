@@ -588,9 +588,15 @@ class GlobalParameters:
             ax.grid()
             ax.set_xlabel("$dN/dS$")
             ax.set_ylabel("$P(dN/dS)$")
-            ax.legend(loc="best", frameon=False)
 
         plt.tight_layout()
+
+        axs[0].legend(
+            frameon=False,
+            bbox_to_anchor=(2 if exonic_intronic_avail else 1.5, -0.2),
+            ncol=4,
+        )
+
         plt.savefig(self.job_cache.joinpath("hist.pdf"), bbox_inches="tight")
 
     @staticmethod

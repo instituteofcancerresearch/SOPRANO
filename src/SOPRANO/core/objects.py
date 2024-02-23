@@ -6,6 +6,7 @@ from argparse import Namespace
 from dataclasses import dataclass
 from typing import Set
 
+import matplotlib.pyplot as plt
 import pandas as pd
 
 from SOPRANO.utils.mpi_utils import (
@@ -428,15 +429,81 @@ class GlobalParameters:
         )
 
         joined_df.to_csv(self.samples_path)
+        self.plot_hist()
 
     @staticmethod
     def split_joined_df(
         joined_df: pd.DataFrame,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
-        exonic_only = joined_df[["Coverage"] == "Exonic_Only"]
-        exonic_intronic = joined_df[["Coverage"] == "Exonic_Intronic"]
+        exonic_only = joined_df[joined_df["Coverage"] == "Exonic_Only"]
+        exonic_intronic = joined_df[joined_df["Coverage"] == "Exonic_Intronic"]
 
         return exonic_only, exonic_intronic
+
+    def plot_hist(self):
+        joined_df = pd.read_csv(self.samples_path)
+        exonic, exonic_intronic = self.split_joined_df(joined_df)
+
+        exonic_avail = exonic.shape[0] != 0
+        exonic_intronic_avail = exonic.shape[0] != 0
+
+        exonic_lab = "Exonic"
+        exonic_intronic_lab = "Exonic Intronic"
+
+        exonic_col = "red"
+        exonic_intronic_col = "blue"
+
+        exonic_alpha = 0.75 if exonic_intronic_avail else 1
+        exonic_intronic_alpha = 0.75 if exonic_avail else 1
+
+        exonic_hatch = None
+        exonic_intronic_hatch = "/"
+
+        exonic_hist_type = "stepfilled"
+        exonic_intronic_hist_type = "step"
+
+        fig, axs = plt.subplots(1, 2, figsize=(8, 4))
+
+        axs[0].set_title("ON")
+        axs[1].set_title("OFF")
+
+        for data, avail, lab, col, alpha, hatch, hist_type in zip(
+            [exonic, exonic_intronic],
+            [exonic_avail, exonic_intronic_avail],
+            [exonic_lab, exonic_intronic_lab],
+            [exonic_col, exonic_intronic_col],
+            [exonic_alpha, exonic_intronic_alpha],
+            [exonic_hatch, exonic_intronic_hatch],
+            [exonic_hist_type, exonic_intronic_hist_type],
+        ):
+            kwargs = {
+                "bins": "auto",
+                "label": lab,
+                "facecolor": col,
+                "edgecolor": col,
+                "alpha": alpha,
+                "hatch": hatch,
+                "histtype": hist_type,
+            }
+
+            if avail:
+                axs[0].hist(
+                    data["ON_dNdS"],
+                    **kwargs,
+                )
+                axs[1].hist(
+                    data["ON_dNdS"],
+                    **kwargs,
+                )
+
+        for ax in axs:
+            ax.grid()
+            ax.set_xlabel("$dN/dS$")
+            ax.set_ylabel("$P(dN/dS)$")
+            ax.legend(loc="upper right", frameon=False)
+
+        plt.tight_layout()
+        plt.savefig(self.job_cache.joinpath("hist.pdf"), bbox_inches="tight")
 
     @staticmethod
     def check_seed(seed: int | None) -> int:
@@ -516,6 +583,9 @@ class GlobalParameters:
         sample_kwargs = self.__dict__.copy()
         del sample_kwargs["n_samples"]
         del sample_kwargs["job_cache"]
+        del sample_kwargs["samples_path"]
+        del sample_kwargs["samples_meta_path"]
+
         sample_kwargs["seed"] = sample_seed
         sample_kwargs["cache_dir"] = sample_cache
         sample_kwargs["analysis_name"] = subdir_name

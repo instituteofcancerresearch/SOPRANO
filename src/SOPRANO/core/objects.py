@@ -462,10 +462,9 @@ class GlobalParameters:
         exonic_hist_type = "stepfilled"
         exonic_intronic_hist_type = "step"
 
-        fig, axs = plt.subplots(1, 2, figsize=(8, 4), sharey=True)
+        fig, axs = plt.subplots(1, 2, figsize=(8, 4))
 
         axs[0].set_title("ON")
-        axs[0].set_ylabel("$P(dN/dS)$")
         axs[1].set_title("OFF")
 
         on_lb, on_ub = None, None
@@ -488,6 +487,7 @@ class GlobalParameters:
                 "alpha": alpha,
                 "hatch": hatch,
                 "histtype": hist_type,
+                "density": True,
             }
 
             if avail:
@@ -534,6 +534,7 @@ class GlobalParameters:
         for ax in axs:
             ax.grid()
             ax.set_xlabel("$dN/dS$")
+            ax.set_ylabel("$P(dN/dS)$")
             ax.legend(loc="best", frameon=False)
 
         plt.tight_layout()

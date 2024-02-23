@@ -9,6 +9,7 @@ from typing import Set
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from SOPRANO.core.kde import estimate_density
 from SOPRANO.utils.mpi_utils import (
     COMM,
     RANK,
@@ -453,8 +454,8 @@ class GlobalParameters:
         exonic_col = "red"
         exonic_intronic_col = "blue"
 
-        exonic_alpha = 0.75 if exonic_intronic_avail else 1
-        exonic_intronic_alpha = 0.75 if exonic_avail else 1
+        exonic_alpha = 0.33 if exonic_intronic_avail else 0.66
+        exonic_intronic_alpha = 0.33 if exonic_avail else 0.66
 
         exonic_hatch = None
         exonic_intronic_hatch = "/"
@@ -495,6 +496,24 @@ class GlobalParameters:
         on_lb, on_ub = data_exonic_on, data_exonic_on  # None, None
         off_lb, off_ub = data_exonic_off, data_exonic_off  # None, None
 
+        kde_exonic_on = (
+            estimate_density(exonic, "ON_dNdS") if exonic_avail else None
+        )
+        kde_exonic_off = (
+            estimate_density(exonic, "OFF_dNdS") if exonic_avail else None
+        )
+
+        kde_exonic_intronic_on = (
+            estimate_density(exonic_intronic, "ON_dNdS")
+            if exonic_intronic_avail
+            else None
+        )
+        kde_exonic_intronic_off = (
+            estimate_density(exonic_intronic, "OFF_dNdS")
+            if exonic_intronic_avail
+            else None
+        )
+
         for (
             samples_df,
             avail,
@@ -507,6 +526,8 @@ class GlobalParameters:
             data_off,
             data_ls,
             data_col,
+            kde_on,
+            kde_off,
         ) in zip(
             [exonic, exonic_intronic],
             [exonic_avail, exonic_intronic_avail],
@@ -519,6 +540,8 @@ class GlobalParameters:
             [data_exonic_off, data_exonic_intronic_off],
             ["--", ":"],
             ["k", "tab:gray"],
+            [kde_exonic_on, kde_exonic_intronic_on],
+            [kde_exonic_off, kde_exonic_intronic_off],
         ):
             kwargs = {
                 "bins": "auto",
@@ -569,12 +592,21 @@ class GlobalParameters:
                     **kwargs,
                 )
 
-                axs[0].axvline(
-                    data_on, c=data_col, ls=data_ls, label=f"Data {lab}"
-                )
-                axs[1].axvline(
-                    data_off, c=data_col, ls=data_ls, label=f"Data {lab}"
-                )
+                kde_kwargs = {
+                    "c": col,
+                }
+
+                axs[0].plot(*kde_on, **kde_kwargs)
+                axs[1].plot(*kde_off, **kde_kwargs)
+
+                data_kwargs = {
+                    "c": data_col,
+                    "ls": data_ls,
+                    "label": f"Data {lab}",
+                }
+
+                axs[0].axvline(data_on, **data_kwargs)
+                axs[1].axvline(data_off, **data_kwargs)
 
         padding_percent = 0.1
 

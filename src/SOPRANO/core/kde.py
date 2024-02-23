@@ -3,6 +3,8 @@ import pandas as pd
 from sklearn.model_selection import GridSearchCV, LeaveOneOut
 from sklearn.neighbors import KernelDensity
 
+from SOPRANO.utils.print_utils import task_output
+
 _BANDWIDTH_POW_MIN = -3
 _BANDWIDTH_POW_MAX = 2
 _BANDWIDTH_N_DENSITY = 500
@@ -31,6 +33,8 @@ def build_gaussian_kde(
 ):
     bandwidths = 10 ** np.linspace(pow_min, pow_max, n_density)
 
+    task_output("Performing grid search for KDE estimate")
+
     grid = GridSearchCV(
         KernelDensity(kernel="gaussian"),
         {"bandwidth": bandwidths},
@@ -41,7 +45,7 @@ def build_gaussian_kde(
 
     grid.fit(input_values)
 
-    print(grid.best_params_)
+    task_output(f"Optimal bandwidth: {grid.best_params_}")
 
     return grid.best_estimator_
 

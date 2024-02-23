@@ -468,6 +468,9 @@ class GlobalParameters:
         axs[0].set_ylabel("$P(dN/dS)$")
         axs[1].set_title("OFF")
 
+        on_lb, on_ub = None, None
+        off_lb, off_ub = None, None
+
         for data, avail, lab, col, alpha, hatch, hist_type in zip(
             [exonic, exonic_intronic],
             [exonic_avail, exonic_intronic_avail],
@@ -488,14 +491,45 @@ class GlobalParameters:
             }
 
             if avail:
+                on_vals = data["ON_dNdS"]
+                off_vals = data["OFF_dNdS"]
+
+                fid_on_lb = on_vals.min() - 0.1
+                fid_on_ub = on_vals.max() + 0.1
+                fid_off_lb = off_vals.min() - 0.1
+                fid_off_ub = off_vals.max() + 0.1
+
+                if on_lb is None:
+                    on_lb = fid_on_lb
+                else:
+                    on_lb = min([on_lb, fid_on_lb])
+
+                if on_ub is None:
+                    on_ub = fid_on_ub
+                else:
+                    on_ub = max([on_ub, fid_on_ub])
+
+                if off_lb is None:
+                    off_lb = fid_off_lb
+                else:
+                    off_lb = min([off_lb, fid_off_lb])
+
+                if off_ub is None:
+                    off_ub = fid_off_ub
+                else:
+                    off_ub = max([off_ub, fid_off_ub])
+
                 axs[0].hist(
-                    data["ON_dNdS"],
+                    on_vals,
                     **kwargs,
                 )
                 axs[1].hist(
-                    data["OFF_dNdS"],
+                    off_vals,
                     **kwargs,
                 )
+
+        axs[0].set_xlim(on_lb, on_ub)
+        axs[1].set_xlim(off_lb, off_ub)
 
         for ax in axs:
             ax.grid()

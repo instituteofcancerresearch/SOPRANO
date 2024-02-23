@@ -494,10 +494,10 @@ class GlobalParameters:
                 on_vals = data["ON_dNdS"]
                 off_vals = data["OFF_dNdS"]
 
-                fid_on_lb = on_vals.min() - 0.1
-                fid_on_ub = on_vals.max() + 0.1
-                fid_off_lb = off_vals.min() - 0.1
-                fid_off_ub = off_vals.max() + 0.1
+                fid_on_lb = on_vals.min()  # - 0.1
+                fid_on_ub = on_vals.max()  # + 0.1
+                fid_off_lb = off_vals.min()  # - 0.1
+                fid_off_ub = off_vals.max()  # + 0.1
 
                 if on_lb is None:
                     on_lb = fid_on_lb
@@ -528,8 +528,13 @@ class GlobalParameters:
                     **kwargs,
                 )
 
-        axs[0].set_xlim(on_lb, on_ub)
-        axs[1].set_xlim(off_lb, off_ub)
+        padding_percent = 0.1
+
+        on_xlim_pad = padding_percent * (on_ub - on_lb)
+        off_xlim_pad = padding_percent * (off_ub - off_lb)
+
+        axs[0].set_xlim(on_lb - on_xlim_pad, on_ub + on_xlim_pad)
+        axs[1].set_xlim(off_lb - off_xlim_pad, off_ub + off_xlim_pad)
 
         for ax in axs:
             ax.grid()

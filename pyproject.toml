@@ -22,7 +22,8 @@ dependencies = [
     "requests",
     "types-requests",
     "clint",
-    "pytest"
+    "pytest",
+    "matplotlib"
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",

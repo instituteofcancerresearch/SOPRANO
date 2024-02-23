@@ -445,7 +445,7 @@ class GlobalParameters:
         exonic, exonic_intronic = self.split_joined_df(joined_df)
 
         exonic_avail = exonic.shape[0] != 0
-        exonic_intronic_avail = exonic.shape[0] != 0
+        exonic_intronic_avail = exonic_intronic.shape[0] != 0
 
         exonic_lab = "Exonic"
         exonic_intronic_lab = "Exonic Intronic"
@@ -467,10 +467,47 @@ class GlobalParameters:
         axs[0].set_title("ON")
         axs[1].set_title("OFF")
 
-        on_lb, on_ub = None, None
-        off_lb, off_ub = None, None
+        data_df = pd.read_csv(self.get_data().results_path, sep="\t")
 
-        for data, avail, lab, col, alpha, hatch, hist_type in zip(
+        data_exonic, data_exonic_intronic = self.split_joined_df(data_df)
+
+        data_exonic_avail = data_exonic.shape[0] != 0
+        data_exonic_intronic_avail = data_exonic_intronic.shape[0] != 0
+
+        data_exonic_on = (
+            data_exonic["ON_dNdS"].mean() if data_exonic_avail else None
+        )
+        data_exonic_off = (
+            data_exonic["OFF_dNdS"].mean() if data_exonic_avail else None
+        )
+
+        data_exonic_intronic_on = (
+            data_exonic_intronic["ON_dNdS"].mean()
+            if data_exonic_intronic_avail
+            else None
+        )
+        data_exonic_intronic_off = (
+            data_exonic_intronic["OFF_dNdS"].mean()
+            if data_exonic_intronic_avail
+            else None
+        )
+
+        on_lb, on_ub = data_exonic_on, data_exonic_on  # None, None
+        off_lb, off_ub = data_exonic_off, data_exonic_off  # None, None
+
+        for (
+            samples_df,
+            avail,
+            lab,
+            col,
+            alpha,
+            hatch,
+            hist_type,
+            data_on,
+            data_off,
+            data_ls,
+            data_col,
+        ) in zip(
             [exonic, exonic_intronic],
             [exonic_avail, exonic_intronic_avail],
             [exonic_lab, exonic_intronic_lab],
@@ -478,6 +515,10 @@ class GlobalParameters:
             [exonic_alpha, exonic_intronic_alpha],
             [exonic_hatch, exonic_intronic_hatch],
             [exonic_hist_type, exonic_intronic_hist_type],
+            [data_exonic_on, data_exonic_intronic_on],
+            [data_exonic_off, data_exonic_intronic_off],
+            ["--", ":"],
+            ["k", "tab:gray"],
         ):
             kwargs = {
                 "bins": "auto",
@@ -491,8 +532,8 @@ class GlobalParameters:
             }
 
             if avail:
-                on_vals = data["ON_dNdS"]
-                off_vals = data["OFF_dNdS"]
+                on_vals = samples_df["ON_dNdS"]
+                off_vals = samples_df["OFF_dNdS"]
 
                 fid_on_lb = on_vals.min()  # - 0.1
                 fid_on_ub = on_vals.max()  # + 0.1
@@ -526,6 +567,13 @@ class GlobalParameters:
                 axs[1].hist(
                     off_vals,
                     **kwargs,
+                )
+
+                axs[0].axvline(
+                    data_on, c=data_col, ls=data_ls, label=f"Data {lab}"
+                )
+                axs[1].axvline(
+                    data_off, c=data_col, ls=data_ls, label=f"Data {lab}"
                 )
 
         padding_percent = 0.1

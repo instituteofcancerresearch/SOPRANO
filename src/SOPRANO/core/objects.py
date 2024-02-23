@@ -1,9 +1,12 @@
 import json
 import logging
 import pathlib
+import warnings
 from argparse import Namespace
 from dataclasses import dataclass
 from typing import Set
+
+import pandas as pd
 
 from SOPRANO.utils.mpi_utils import (
     COMM,
@@ -376,8 +379,42 @@ class GlobalParameters:
                     f"Different pipeline runs must have distinct directories!"
                 )
 
+    @as_single_process()
     def gather(self):
-        pass
+        sample_results_paths = [
+            self.get_sample(idx).results_path for idx in range(self.n_samples)
+        ]
+
+        for expected_results_path in sample_results_paths:
+            if not expected_results_path.exists():
+                warnings.warn(
+                    f"Expected results file not found: "
+                    f"{expected_results_path} ... \n"
+                    f"omitting from post-processing."
+                )
+
+                sample_results_paths.remove(expected_results_path)
+
+        if len(sample_results_paths) == 0:
+            raise ValueError(f"No sample results found for {self.job_cache}.")
+
+        joined_df: pd.DataFrame | None = None
+
+        samples_path = self.job_cache.joinpath("sample_df.csv")
+        samples_meta_path = self.job_cache.joinpath("samples_df.meta")
+
+        with open(samples_meta_path, "w") as f:
+            for path in sample_results_paths:
+                if joined_df:
+                    joined_df = pd.concat(
+                        pd.read_csv(path, sep="\t"), ignore_index=True
+                    )
+                else:
+                    joined_df = pd.read_csv(path, sep="\t")
+
+            f.write(f"{path.as_posix()}\n")
+
+        joined_df.to_csv(samples_path)
 
     @staticmethod
     def check_seed(seed: int | None) -> int:

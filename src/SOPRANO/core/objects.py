@@ -416,7 +416,27 @@ class GlobalParameters:
 
                 f.write(f"{path.as_posix()}\n")
 
+        # Dropped estimateed statistics... don't mean much in this context
+        joined_df.drop(
+            columns=[
+                "ON_Low_CI",
+                "ON_High_CI",
+                "OFF_Low_CI",
+                "OFF_High_CI",
+                "Pvalue",
+            ]
+        )
+
         joined_df.to_csv(self.samples_path)
+
+    @staticmethod
+    def split_joined_df(
+        joined_df: pd.DataFrame,
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        exonic_only = joined_df[["Coverage"] == "Exonic_Only"]
+        exonic_intronic = joined_df[["Coverage"] == "Exonic_Intronic"]
+
+        return exonic_only, exonic_intronic
 
     @staticmethod
     def check_seed(seed: int | None) -> int:

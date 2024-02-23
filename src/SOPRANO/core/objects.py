@@ -1,9 +1,13 @@
 import json
 import logging
 import pathlib
+import warnings
 from argparse import Namespace
 from dataclasses import dataclass
 from typing import Set
+
+import matplotlib.pyplot as plt
+import pandas as pd
 
 from SOPRANO.utils.mpi_utils import (
     COMM,
@@ -312,6 +316,10 @@ class GlobalParameters:
         self.get_all_samples(_init=True)
         self.cache_ordered_params()
 
+        # Post processing data files
+        self.samples_path = self.job_cache.joinpath("samples_df.csv")
+        self.samples_meta_path = self.job_cache.joinpath("samples_df.meta")
+
     def get_ordered_params(self):
         kwargs = self.__dict__.copy()
 
@@ -376,8 +384,126 @@ class GlobalParameters:
                     f"Different pipeline runs must have distinct directories!"
                 )
 
+    @as_single_process()
     def gather(self):
-        pass
+        sample_results_paths = [
+            self.get_sample(idx).results_path for idx in range(self.n_samples)
+        ]
+
+        for expected_results_path in sample_results_paths:
+            if not expected_results_path.exists():
+                warnings.warn(
+                    f"Expected results file not found: "
+                    f"{expected_results_path} ... \n"
+                    f"omitting from post-processing."
+                )
+
+                sample_results_paths.remove(expected_results_path)
+
+        if len(sample_results_paths) == 0:
+            raise ValueError(f"No sample results found for {self.job_cache}.")
+
+        joined_df: pd.DataFrame | None = None
+
+        with open(self.samples_meta_path, "w") as f:
+            for path in sample_results_paths:
+                if joined_df is None:
+                    joined_df = pd.read_csv(path, sep="\t")
+                else:
+                    joined_df = pd.concat(
+                        [joined_df, pd.read_csv(path, sep="\t")],
+                        ignore_index=True,
+                    )
+
+                f.write(f"{path.as_posix()}\n")
+
+        # Dropped estimateed statistics... don't mean much in this context
+        joined_df.drop(
+            columns=[
+                "ON_Low_CI",
+                "ON_High_CI",
+                "OFF_Low_CI",
+                "OFF_High_CI",
+                "Pvalue",
+            ]
+        )
+
+        joined_df.to_csv(self.samples_path)
+        self.plot_hist()
+
+    @staticmethod
+    def split_joined_df(
+        joined_df: pd.DataFrame,
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        exonic_only = joined_df[joined_df["Coverage"] == "Exonic_Only"]
+        exonic_intronic = joined_df[joined_df["Coverage"] == "Exonic_Intronic"]
+
+        return exonic_only, exonic_intronic
+
+    def plot_hist(self):
+        joined_df = pd.read_csv(self.samples_path)
+        exonic, exonic_intronic = self.split_joined_df(joined_df)
+
+        exonic_avail = exonic.shape[0] != 0
+        exonic_intronic_avail = exonic.shape[0] != 0
+
+        exonic_lab = "Exonic"
+        exonic_intronic_lab = "Exonic Intronic"
+
+        exonic_col = "red"
+        exonic_intronic_col = "blue"
+
+        exonic_alpha = 0.75 if exonic_intronic_avail else 1
+        exonic_intronic_alpha = 0.75 if exonic_avail else 1
+
+        exonic_hatch = None
+        exonic_intronic_hatch = "/"
+
+        exonic_hist_type = "stepfilled"
+        exonic_intronic_hist_type = "step"
+
+        fig, axs = plt.subplots(1, 2, figsize=(8, 4))
+
+        axs[0].set_title("ON")
+        axs[1].set_title("OFF")
+
+        for data, avail, lab, col, alpha, hatch, hist_type in zip(
+            [exonic, exonic_intronic],
+            [exonic_avail, exonic_intronic_avail],
+            [exonic_lab, exonic_intronic_lab],
+            [exonic_col, exonic_intronic_col],
+            [exonic_alpha, exonic_intronic_alpha],
+            [exonic_hatch, exonic_intronic_hatch],
+            [exonic_hist_type, exonic_intronic_hist_type],
+        ):
+            kwargs = {
+                "bins": "auto",
+                "label": lab,
+                "facecolor": col,
+                "edgecolor": col,
+                "alpha": alpha,
+                "hatch": hatch,
+                "histtype": hist_type,
+            }
+
+            if avail:
+                axs[0].hist(
+                    data["ON_dNdS"],
+                    **kwargs,
+                )
+                axs[1].hist(
+                    data["ON_dNdS"],
+                    **kwargs,
+                )
+
+        for ax in axs:
+            ax.grid()
+            ax.set_xlabel("$dN/dS$")
+            ax.set_ylabel("$P(dN/dS)$")
+            ax.legend(loc="upper right", frameon=False)
+
+        plt.tight_layout()
+        plt.savefig(self.job_cache.joinpath("hist.pdf"), bbox_inches="tight")
 
     @staticmethod
     def check_seed(seed: int | None) -> int:
@@ -457,6 +583,9 @@ class GlobalParameters:
         sample_kwargs = self.__dict__.copy()
         del sample_kwargs["n_samples"]
         del sample_kwargs["job_cache"]
+        del sample_kwargs["samples_path"]
+        del sample_kwargs["samples_meta_path"]
+
         sample_kwargs["seed"] = sample_seed
         sample_kwargs["cache_dir"] = sample_cache
         sample_kwargs["analysis_name"] = subdir_name

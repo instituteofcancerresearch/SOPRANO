@@ -315,6 +315,10 @@ class GlobalParameters:
         self.get_all_samples(_init=True)
         self.cache_ordered_params()
 
+        # Post processing data files
+        self.samples_path = self.job_cache.joinpath("samples_df.csv")
+        self.samples_meta_path = self.job_cache.joinpath("samples_df.meta")
+
     def get_ordered_params(self):
         kwargs = self.__dict__.copy()
 
@@ -400,10 +404,7 @@ class GlobalParameters:
 
         joined_df: pd.DataFrame | None = None
 
-        samples_path = self.job_cache.joinpath("sample_df.csv")
-        samples_meta_path = self.job_cache.joinpath("samples_df.meta")
-
-        with open(samples_meta_path, "w") as f:
+        with open(self.samples_meta_path, "w") as f:
             for path in sample_results_paths:
                 if joined_df is None:
                     joined_df = pd.read_csv(path, sep="\t")
@@ -415,7 +416,7 @@ class GlobalParameters:
 
                 f.write(f"{path.as_posix()}\n")
 
-        joined_df.to_csv(samples_path)
+        joined_df.to_csv(self.samples_path)
 
     @staticmethod
     def check_seed(seed: int | None) -> int:

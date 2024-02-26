@@ -36,6 +36,20 @@ _STEP_PCT_ENV_VAR = "SOPRANO_KDE_STEP_PCT"
 _MAX_ITER_ENV_VAR = "SOPRANO_KDE_MAX_ITER"
 
 
+class DefaultKDE:
+    @staticmethod
+    def get_cv_log_min():
+        return float(os.getenv(_CV_LOG_MIN_ENV_VAR, _CV_LOG_MIN))
+
+    @staticmethod
+    def get_cv_log_max():
+        return float(os.getenv(_CV_LOG_MAX_ENV_VAR, _CV_LOG_MAX))
+
+    @staticmethod
+    def get_cv_log_steps():
+        return int(os.getenv(_CV_LOG_STEPS_ENV_VAR, _CV_LOG_STEPS))
+
+
 def _sanitize_sklearn_input(
     data_frame: pd.DataFrame, key: str, make_2d=True, sort=False
 ):
@@ -53,11 +67,12 @@ def _sanitize_sklearn_input(
 def _build_gaussian_kde(
     null_hypothesis_samples: pd.DataFrame,
     key: str,
-    pow_min=float(os.getenv(_CV_LOG_MIN_ENV_VAR, _CV_LOG_MIN)),
-    pow_max=float(os.getenv(_CV_LOG_MAX_ENV_VAR, _CV_LOG_MAX)),
-    n_density=int(os.getenv(_CV_LOG_STEPS_ENV_VAR, _CV_LOG_STEPS)),
 ):
-    bandwidths = 10 ** np.linspace(pow_min, pow_max, n_density)
+    bandwidths = 10 ** np.linspace(
+        DefaultKDE.get_cv_log_min(),
+        DefaultKDE.get_cv_log_max(),
+        DefaultKDE.get_cv_log_steps(),
+    )
 
     task_output("Performing grid search for KDE estimate")
 
@@ -79,13 +94,8 @@ def _build_gaussian_kde(
 def _probability_estimator(
     null_hypothesis_samples: pd.DataFrame,
     key: str,
-    pow_min=_CV_LOG_MIN,
-    pow_max=_CV_LOG_MAX,
-    n_density=_CV_LOG_STEPS,
 ):
-    base_estimator = _build_gaussian_kde(
-        null_hypothesis_samples, key, pow_min, pow_max, n_density
-    )
+    base_estimator = _build_gaussian_kde(null_hypothesis_samples, key)
 
     def _estimator_to_vectorize(x):
         return np.exp(base_estimator.score_samples(np.array([x])[:, None]))

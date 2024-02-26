@@ -456,6 +456,7 @@ class GlobalParameters:
             data_exonic_intronic,
         )
         plotter.make_figure(self.job_cache)
+        plotter.dump_statistics(self.job_cache)
 
     @staticmethod
     def check_seed(seed: int | None) -> int:

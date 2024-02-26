@@ -184,10 +184,10 @@ def _determine_integration_bounds(
 
 def _estimate_pvalue(
     estimator: Callable,
-    observed_value: float,
+    observed_value: float | None,
     lower_integral_bound: float,
     upper_integral_bound: float,
-):
+) -> tuple[float, float]:
     pvalue_left = quad(estimator, lower_integral_bound, observed_value)[0]
     pvalue_right = quad(estimator, observed_value, upper_integral_bound)[0]
 
@@ -200,8 +200,22 @@ def _estimate_std_deviation(
     return sample_values.std()
 
 
-def _data_available(null_hypothesis_samples_split: pd.DataFrame):
-    return null_hypothesis_samples_split.shape[0] != 0
+def _samples_and_data_ara_available(
+    null_hypothesis_samples_split: pd.DataFrame, data: pd.DataFrame
+):
+    data_available = True
+
+    if null_hypothesis_samples_split.empty:
+        warnings.warn("Null hypothesis samples are empty!")
+        data_available = False
+
+    if data.empty:
+        warnings.warn("Data is empty!")
+        data_available = False
+
+    # return null_hypothesis_samples_split.shape[0] != 0 and not data.empty
+
+    return data_available
 
 
 def _null_estimator(*args, **kwargs):
@@ -239,9 +253,16 @@ class _Data:
         column_key: str,
     ):
         self.null_hypothesis_samples = null_hypothesis_samples
-        self.data_value = data[column_key].mean()
+        self.data_value = None if data.empty else data[column_key].mean()
+
+        # print(column_key)
+        # print(self.data_value)
+        # print(data)
+
         self.column_key = column_key
-        self.is_available = _data_available(null_hypothesis_samples)
+        self.is_available = _samples_and_data_ara_available(
+            null_hypothesis_samples, data
+        )
 
         if self.is_available:
             self.estimates = self._apply_estimator()
@@ -294,8 +315,8 @@ _EXONIC_INTRONIC_BASE_PLOT_KWARGS = {
     "sample_label": "Exonic Intronic",
     "sample_color": "blue",
     "sample_alpha": 0.33,
-    "sample_hatch": "/",
-    "sample_hist_type": "step",
+    "sample_hatch": None,  # "/",
+    "sample_hist_type": "stepfilled",  # "step",
     "data_label": "Exonic Intronic Data",
     "data_color": "tab:gray",
     "data_line_style": ":",
@@ -422,29 +443,31 @@ class _HistogramData(_Data):
 class PlotData:
     def __init__(
         self,
-        exonic_samples: pd.DataFrame,
-        exonic_intronic_samples: pd.DataFrame,
-        data_results: pd.DataFrame,
+        samples_exonic: pd.DataFrame,
+        samples_exonic_intronic: pd.DataFrame,
+        data_exonic: pd.DataFrame,
+        data_exonic_intronic: pd.DataFrame,
     ):
-        on_exonic = _HistogramData.on_exonic_only(exonic_samples, data_results)
+        on_exonic = _HistogramData.on_exonic_only(samples_exonic, data_exonic)
         on_exonic_intronic = _HistogramData.on_exonic_intronic(
-            exonic_intronic_samples, data_results
+            samples_exonic_intronic, data_exonic_intronic
         )
 
         off_exonic = _HistogramData.off_exonic_only(
-            exonic_samples, data_results
-        )
-        off_exonic_intronic = _HistogramData.off_exonic_intronic(
-            exonic_intronic_samples, data_results
+            samples_exonic, data_exonic
         )
 
-        self.on_data = [
-            data
-            for data in (on_exonic, on_exonic_intronic)
-            if data.is_available
+        off_exonic_intronic = _HistogramData.off_exonic_intronic(
+            samples_exonic_intronic, data_exonic_intronic
+        )
+
+        self.on_samples = [
+            samples
+            for samples in (on_exonic, on_exonic_intronic)
+            if samples.is_available
         ]
 
-        self.off_data = [
+        self.off_samples = [
             data
             for data in (off_exonic, off_exonic_intronic)
             if data.is_available
@@ -485,8 +508,8 @@ class PlotData:
 
             ax.set_xlim(x_min, x_max)
 
-        render(self.on_data, ax_on)
-        render(self.off_data, ax_off)
+        render(self.on_samples, ax_on)
+        render(self.off_samples, ax_off)
 
         for ax in (ax_on, ax_off):
             ax.grid()
@@ -497,7 +520,7 @@ class PlotData:
 
         ax_on.legend(
             frameon=False,
-            bbox_to_anchor=(2 if len(self.on_data) == 2 else 1.5, -0.2),
+            bbox_to_anchor=(2 if len(self.on_samples) == 2 else 1.5, -0.2),
             ncol=4,
         )
 

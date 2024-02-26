@@ -442,10 +442,19 @@ class GlobalParameters:
 
     def plot_hist(self):
         joined_df = pd.read_csv(self.samples_path)
-        exonic, exonic_intronic = self.split_joined_df(joined_df)
-        data_df = pd.read_csv(self.get_data().results_path, sep="\t")
+        samples_exonic, samples_exonic_intronic = self.split_joined_df(
+            joined_df
+        )
 
-        plotter = PlotData(exonic, exonic_intronic, data_df)
+        data_df = pd.read_csv(self.get_data().results_path, sep="\t")
+        data_exonic, data_exonic_intronic = self.split_joined_df(data_df)
+
+        plotter = PlotData(
+            samples_exonic,
+            samples_exonic_intronic,
+            data_exonic,
+            data_exonic_intronic,
+        )
         plotter.make_figure(self.job_cache)
 
     @staticmethod

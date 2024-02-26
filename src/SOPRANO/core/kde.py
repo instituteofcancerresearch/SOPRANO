@@ -1,3 +1,4 @@
+import json
 import os
 import pathlib
 import warnings
@@ -222,6 +223,10 @@ def _estimate_std_deviation(
     return sample_values.std()
 
 
+def _samples_mean(sample_values: np.ndarray):
+    return sample_values.mean()
+
+
 def _samples_and_data_ara_available(
     null_hypothesis_samples_split: pd.DataFrame, data: pd.DataFrame
 ):
@@ -247,13 +252,31 @@ def _null_estimator(*args, **kwargs):
 @dataclass
 class EstimatorResults:
     estimator: Callable
-    integration_bounds: Union[None, tuple]
-    pvalues: Union[None, tuple]
+    integration_bounds: tuple[Union[None, float], Union[None, float]]
+    pvalues: tuple[Union[None, float], Union[None, float]]
     std: Union[None, float]
+    sample_mean: Union[None, float]
+    data_value: Union[None, float]
 
     @classmethod
     def null(cls):
-        return cls(_null_estimator, None, None, None)
+        return cls(
+            estimator=_null_estimator,
+            integration_bounds=(None, None),
+            pvalues=(None, None),
+            std=None,
+            sample_mean=None,
+            data_value=None,
+        )
+
+    def dict_summary(self) -> dict[str, dict[str, Union[float, None]]]:
+        sample_stats = {"mean_value": self.sample_mean, "std_dev": self.std}
+        data_stats = {
+            "value": self.data_value,
+            "p_value_left": self.pvalues[0],
+            "p_value_right": self.pvalues[1],
+        }
+        return {"samples": sample_stats, "data": data_stats}
 
 
 class _Data:
@@ -303,11 +326,15 @@ class _Data:
 
         std = _estimate_std_deviation(samples)
 
+        sample_mean = _samples_mean(samples)
+
         return EstimatorResults(
             estimator=estimator,
             integration_bounds=integration_bounds,
             pvalues=pvalues,
             std=std,
+            sample_mean=sample_mean,
+            data_value=self.data_value,
         )
 
 
@@ -459,28 +486,30 @@ class PlotData:
         data_exonic: pd.DataFrame,
         data_exonic_intronic: pd.DataFrame,
     ):
-        on_exonic = _HistogramData.on_exonic_only(samples_exonic, data_exonic)
-        on_exonic_intronic = _HistogramData.on_exonic_intronic(
+        self.on_exonic = _HistogramData.on_exonic_only(
+            samples_exonic, data_exonic
+        )
+        self.on_exonic_intronic = _HistogramData.on_exonic_intronic(
             samples_exonic_intronic, data_exonic_intronic
         )
 
-        off_exonic = _HistogramData.off_exonic_only(
+        self.off_exonic = _HistogramData.off_exonic_only(
             samples_exonic, data_exonic
         )
 
-        off_exonic_intronic = _HistogramData.off_exonic_intronic(
+        self.off_exonic_intronic = _HistogramData.off_exonic_intronic(
             samples_exonic_intronic, data_exonic_intronic
         )
 
         self.on_samples = [
             samples
-            for samples in (on_exonic, on_exonic_intronic)
+            for samples in (self.on_exonic, self.on_exonic_intronic)
             if samples.is_available
         ]
 
         self.off_samples = [
             data
-            for data in (off_exonic, off_exonic_intronic)
+            for data in (self.off_exonic, self.off_exonic_intronic)
             if data.is_available
         ]
 
@@ -536,3 +565,48 @@ class PlotData:
         )
 
         plt.savefig(job_cache.joinpath("figure.pdf"), bbox_inches="tight")
+
+    def _dump_tuning_parameters(self, job_cache: pathlib.Path):
+        # tuning_path = job_cache.joinpath("kde_config.json")
+        pass
+
+    def dump_statistics(
+        self, job_cache: pathlib.Path, other: dict | None = None
+    ):
+        stats_path = job_cache.joinpath("statistics.json")
+
+        _on_key = "ON_dNdS"
+        _off_key = "OFF_dNdS"
+
+        _exonic_key = "exonic_only"
+        _exonic_intronic_key = "exonic_intronic"
+
+        statistics: dict[
+            str, dict[str, dict[str, dict[str, float | None]]]
+        ] = {
+            _on_key: {},
+            _off_key: {},
+        }
+
+        def update_statistics(
+            on_off_key: str, type_key: str, hist_data: _HistogramData
+        ):
+            if hist_data.is_available:
+                statistics[on_off_key][
+                    type_key
+                ] = hist_data.estimates.dict_summary()
+
+        # Update on exonic components
+        update_statistics(_on_key, _exonic_key, self.on_exonic)
+        update_statistics(_off_key, _exonic_key, self.off_exonic)
+
+        # Update exonic intronic components
+        update_statistics(
+            _on_key, _exonic_intronic_key, self.on_exonic_intronic
+        )
+        update_statistics(
+            _off_key, _exonic_intronic_key, self.on_exonic_intronic
+        )
+
+        with open(stats_path, "w") as f:
+            json.dump(statistics, f, indent=4)

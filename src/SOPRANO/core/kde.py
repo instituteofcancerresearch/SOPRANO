@@ -14,7 +14,7 @@ _BANDWIDTH_POW_MAX = 2
 _BANDWIDTH_N_DENSITY = 500
 
 
-def sanitize_sklearn_input(
+def _sanitize_sklearn_input(
     data_frame: pd.DataFrame, key: str, make_2d=True, sort=False
 ):
     numpy_array = data_frame[key].to_numpy().copy()
@@ -28,7 +28,7 @@ def sanitize_sklearn_input(
         return numpy_array
 
 
-def build_gaussian_kde(
+def _build_gaussian_kde(
     null_hypothesis_samples: pd.DataFrame,
     key: str,
     pow_min=_BANDWIDTH_POW_MIN,
@@ -45,7 +45,7 @@ def build_gaussian_kde(
         cv=LeaveOneOut(),
     )
 
-    input_values = sanitize_sklearn_input(null_hypothesis_samples, key)
+    input_values = _sanitize_sklearn_input(null_hypothesis_samples, key)
 
     grid.fit(input_values)
 
@@ -57,7 +57,7 @@ def build_gaussian_kde(
 def estimate_density(
     null_hypothesis_samples: pd.DataFrame, key: str, return_estimator=False
 ):
-    estimator = build_gaussian_kde(null_hypothesis_samples, key)
+    estimator = _build_gaussian_kde(null_hypothesis_samples, key)
 
     data_1d = np.linspace(
         0.25 * null_hypothesis_samples[key].min(),
@@ -76,14 +76,14 @@ def estimate_density(
     return data_1d, p
 
 
-def probability_estimator(
+def _probability_estimator(
     null_hypothesis_samples: pd.DataFrame,
     key: str,
     pow_min=_BANDWIDTH_POW_MIN,
     pow_max=_BANDWIDTH_POW_MAX,
     n_density=_BANDWIDTH_N_DENSITY,
 ):
-    base_estimator = build_gaussian_kde(
+    base_estimator = _build_gaussian_kde(
         null_hypothesis_samples, key, pow_min, pow_max, n_density
     )
 
@@ -93,7 +93,7 @@ def probability_estimator(
     return np.vectorize(_estimator_to_vectorize)
 
 
-def renormalize_estimator(
+def _renormalize_estimator(
     null_hypothesis_estimator: Callable,
 ):
     warnings.warn(
@@ -104,7 +104,44 @@ def renormalize_estimator(
     return null_hypothesis_estimator
 
 
-def determine_integration_bounds(
+def _iterate_until_convergence(
+    max_iterations,
+    estimator,
+    absolute_tol,
+    relative_tol,
+    first_step,
+    method: Callable,
+    _iterations=0,
+):
+    if _iterations > max_iterations:
+        warnings.warn(
+            f"Maximum number of iterations exceeded: {max_iterations}\n"
+            f"exiting with P(dN/dS)={estimator(first_step)}"
+        )
+
+    next_step = method(first_step)
+
+    first_prob = estimator(first_step)
+    next_prob = estimator(next_step)
+
+    absolute_diff = abs(first_prob - next_prob)
+    relative_diff = absolute_diff / next_prob
+
+    if absolute_diff > absolute_tol and relative_diff > relative_tol:
+        return _iterate_until_convergence(
+            max_iterations,
+            estimator,
+            absolute_tol,
+            relative_tol,
+            next_step,
+            method,
+            _iterations=_iterations + 1,
+        )
+
+    return first_step
+
+
+def _determine_integration_bounds(
     estimator: Callable,
     sample_values_min: float,
     sample_values_max: float,
@@ -120,40 +157,28 @@ def determine_integration_bounds(
 
     step_distance = step_percent * samples_spread
 
-    def find_convergence(first_step, method: Callable, _iterations=0):
-        if _iterations > max_iterations:
-            warnings.warn(
-                f"Maximum number of iterations exceeded: {max_iterations}\n"
-                f"exiting with P(dN/dS)={estimator(first_step)}"
-            )
-
-        next_step = method(first_step)
-
-        first_prob = estimator(first_step)
-        next_prob = estimator(next_step)
-
-        absolute_diff = abs(first_prob - next_prob)
-        relative_diff = absolute_diff / next_prob
-
-        if absolute_diff > absolute_tol and relative_diff > relative_tol:
-            return find_convergence(
-                next_step, method, _iterations=_iterations + 1
-            )
-
-        return first_step
-
-    lower_integral_bound = find_convergence(
-        sample_values_min, lambda x: x - step_distance
+    lower_integral_bound = _iterate_until_convergence(
+        max_iterations,
+        estimator,
+        absolute_tol,
+        relative_tol,
+        sample_values_min,
+        lambda x: x - step_distance,
     )
 
-    upper_integral_bound = find_convergence(
-        sample_values_min, lambda x: x + step_distance
+    upper_integral_bound = _iterate_until_convergence(
+        max_iterations,
+        estimator,
+        absolute_tol,
+        relative_tol,
+        sample_values_min,
+        lambda x: x + step_distance,
     )
 
     return lower_integral_bound, upper_integral_bound
 
 
-def estimate_pvalue(
+def _estimate_pvalue(
     estimator: Callable,
     observed_value: float,
     lower_integral_bound: float,
@@ -165,7 +190,7 @@ def estimate_pvalue(
     return pvalue_left, pvalue_right
 
 
-def estimate_std(
+def _estimate_std_deviation(
     sample_values: np.ndarray,
 ):
     return sample_values.std()

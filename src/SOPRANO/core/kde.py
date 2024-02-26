@@ -478,6 +478,31 @@ class _HistogramData(_Data):
             )
 
 
+def _dump_tuning_parameters(job_cache: pathlib.Path):
+    tuning_path = job_cache.joinpath("kde_config.json")
+
+    grid_search_params = {
+        "log_min": DefaultKDE.get_cv_log_min(),
+        "log_max": DefaultKDE.get_cv_log_max(),
+        "log_steps": DefaultKDE.get_cv_log_steps(),
+    }
+
+    intgration_params = {
+        "abs_tol": DefaultKDE.get_int_abs_tol(),
+        "rel_tol": DefaultKDE.get_int_rel_tol(),
+        "max_iterations": DefaultKDE.get_int_max_iter(),
+        "step_size_pct": DefaultKDE.get_int_step_size(),
+    }
+
+    all_params = {
+        "grid_search": grid_search_params,
+        "intgration": intgration_params,
+    }
+
+    with open(tuning_path, "w") as f:
+        json.dump(all_params, f, indent=4)
+
+
 class PlotData:
     def __init__(
         self,
@@ -566,13 +591,9 @@ class PlotData:
 
         plt.savefig(job_cache.joinpath("figure.pdf"), bbox_inches="tight")
 
-    def _dump_tuning_parameters(self, job_cache: pathlib.Path):
-        # tuning_path = job_cache.joinpath("kde_config.json")
-        pass
+    def dump_statistics(self, job_cache: pathlib.Path):
+        _dump_tuning_parameters(job_cache)
 
-    def dump_statistics(
-        self, job_cache: pathlib.Path, other: dict | None = None
-    ):
         stats_path = job_cache.joinpath("statistics.json")
 
         _on_key = "ON_dNdS"

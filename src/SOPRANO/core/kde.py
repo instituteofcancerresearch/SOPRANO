@@ -1,7 +1,7 @@
 import os
 import warnings
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Union
 
 import numpy as np
 import pandas as pd
@@ -204,10 +204,10 @@ def _data_available(null_hypothesis_samples_split: pd.DataFrame):
 
 @dataclass
 class EstimatorResults:
-    estimator: None | Callable
-    integration_bounds: None | tuple
-    pvalues: None | tuple
-    std: None | float
+    estimator: Union[None, Callable]
+    integration_bounds: Union[None, tuple]
+    pvalues: Union[None, tuple]
+    std: Union[None, float]
 
     @classmethod
     def null(cls):

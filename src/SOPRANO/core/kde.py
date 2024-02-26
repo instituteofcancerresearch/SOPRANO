@@ -13,9 +13,27 @@ from sklearn.neighbors import KernelDensity
 
 from SOPRANO.utils.print_utils import task_output
 
-_BANDWIDTH_POW_MIN = -3
-_BANDWIDTH_POW_MAX = 2
-_BANDWIDTH_N_DENSITY = 250
+# Default values for gridsearch optimization & integration tols
+
+_CV_LOG_MIN = -3
+_CV_LOG_MAX = 2
+_CV_LOG_STEPS = 250
+
+_ABS_TOL = 1e-8
+_REL_TOL = 1e-8
+_STEP_PCT = 1e-2
+_MAX_ITER = 1000
+
+# Override by exporting the following variables
+
+_CV_LOG_MIN_ENV_VAR = "SOPRANO_CV_LOG_MIN"
+_CV_LOG_MAX_ENV_VAR = "SOPRANO_CV_LOG_MAX"
+_CV_LOG_STEPS_ENV_VAR = "SOPRANO_CV_LOG_STEPS"
+
+_ABS_TOL_ENV_VAR = "SOPRANO_KDE_ABS_TOL"
+_REL_TOL_ENV_VAR = "SOPRANO_KDE_REL_TOL"
+_STEP_PCT_ENV_VAR = "SOPRANO_KDE_STEP_PCT"
+_MAX_ITER_ENV_VAR = "SOPRANO_KDE_MAX_ITER"
 
 
 def _sanitize_sklearn_input(
@@ -35,9 +53,9 @@ def _sanitize_sklearn_input(
 def _build_gaussian_kde(
     null_hypothesis_samples: pd.DataFrame,
     key: str,
-    pow_min=_BANDWIDTH_POW_MIN,
-    pow_max=_BANDWIDTH_POW_MAX,
-    n_density=_BANDWIDTH_N_DENSITY,
+    pow_min=float(os.getenv(_CV_LOG_MIN_ENV_VAR, _CV_LOG_MIN)),
+    pow_max=float(os.getenv(_CV_LOG_MAX_ENV_VAR, _CV_LOG_MAX)),
+    n_density=int(os.getenv(_CV_LOG_STEPS_ENV_VAR, _CV_LOG_STEPS)),
 ):
     bandwidths = 10 ** np.linspace(pow_min, pow_max, n_density)
 
@@ -61,9 +79,9 @@ def _build_gaussian_kde(
 def _probability_estimator(
     null_hypothesis_samples: pd.DataFrame,
     key: str,
-    pow_min=_BANDWIDTH_POW_MIN,
-    pow_max=_BANDWIDTH_POW_MAX,
-    n_density=_BANDWIDTH_N_DENSITY,
+    pow_min=_CV_LOG_MIN,
+    pow_max=_CV_LOG_MAX,
+    n_density=_CV_LOG_STEPS,
 ):
     base_estimator = _build_gaussian_kde(
         null_hypothesis_samples, key, pow_min, pow_max, n_density
@@ -210,17 +228,6 @@ class EstimatorResults:
     @classmethod
     def null(cls):
         return cls(_null_estimator, None, None, None)
-
-
-_ABS_TOL = 1e-8
-_REL_TOL = 1e-8
-_STEP_PCT = 1e-2
-_MAX_ITER = 1000
-
-_ABS_TOL_ENV_VAR = "SOPRANO_KDE_ABS_TOL"
-_REL_TOL_ENV_VAR = "SOPRANO_KDE_REL_TOL"
-_STEP_PCT_ENV_VAR = "SOPRANO_KDE_STEP_PCT"
-_MAX_ITER_ENV_VAR = "SOPRANO_KDE_MAX_ITER"
 
 
 class _Data:

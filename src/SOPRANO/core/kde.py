@@ -15,7 +15,7 @@ from SOPRANO.utils.print_utils import task_output
 
 _BANDWIDTH_POW_MIN = -3
 _BANDWIDTH_POW_MAX = 2
-_BANDWIDTH_N_DENSITY = 50  # 500
+_BANDWIDTH_N_DENSITY = 250
 
 
 def _sanitize_sklearn_input(
@@ -56,28 +56,6 @@ def _build_gaussian_kde(
     task_output(f"Optimal bandwidth: {grid.best_params_}")
 
     return grid.best_estimator_
-
-
-def estimate_density(
-    null_hypothesis_samples: pd.DataFrame, key: str, return_estimator=False
-):
-    estimator = _build_gaussian_kde(null_hypothesis_samples, key)
-
-    data_1d = np.linspace(
-        0.25 * null_hypothesis_samples[key].min(),
-        null_hypothesis_samples[key].max() * 1.75,
-        1000,
-    )
-    data_2d = data_1d[:, None]
-
-    lnp = estimator.score_samples(data_2d)
-
-    p = np.exp(lnp)
-
-    if return_estimator:
-        return data_1d, p, estimator
-
-    return data_1d, p
 
 
 def _probability_estimator(

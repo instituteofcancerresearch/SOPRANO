@@ -1,8 +1,10 @@
 import os
+import pathlib
 import warnings
 from dataclasses import dataclass
 from typing import Callable, Union
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy.integrate import quad
@@ -13,7 +15,7 @@ from SOPRANO.utils.print_utils import task_output
 
 _BANDWIDTH_POW_MIN = -3
 _BANDWIDTH_POW_MAX = 2
-_BANDWIDTH_N_DENSITY = 500
+_BANDWIDTH_N_DENSITY = 50  # 500
 
 
 def _sanitize_sklearn_input(
@@ -202,16 +204,20 @@ def _data_available(null_hypothesis_samples_split: pd.DataFrame):
     return null_hypothesis_samples_split.shape[0] != 0
 
 
+def _null_estimator(*args, **kwargs):
+    pass
+
+
 @dataclass
 class EstimatorResults:
-    estimator: Union[None, Callable]
+    estimator: Callable
     integration_bounds: Union[None, tuple]
     pvalues: Union[None, tuple]
     std: Union[None, float]
 
     @classmethod
     def null(cls):
-        return cls(None, None, None, None)
+        return cls(_null_estimator, None, None, None)
 
 
 _ABS_TOL = 1e-8
@@ -273,46 +279,67 @@ class _Data:
         )
 
 
+_EXONIC_BASE_PLOT_KWARGS = {
+    "sample_label": "Exonic",
+    "sample_color": "red",
+    "sample_alpha": 0.33,
+    "sample_hatch": None,
+    "sample_hist_type": "stepfilled",
+    "data_label": "Exonic Data",
+    "data_color": "k",
+    "data_line_style": "--",
+}
+
+_EXONIC_INTRONIC_BASE_PLOT_KWARGS = {
+    "sample_label": "Exonic Intronic",
+    "sample_color": "blue",
+    "sample_alpha": 0.33,
+    "sample_hatch": "/",
+    "sample_hist_type": "step",
+    "data_label": "Exonic Intronic Data",
+    "data_color": "tab:gray",
+    "data_line_style": ":",
+}
+
+
 class _HistogramData(_Data):
     def __init__(
         self,
         null_hypothesis_samples: pd.DataFrame,
         data_results: pd.DataFrame,
         column_key: str,
-        sample_label: str,
-        sample_color: str,
-        sample_alpha: float,
-        sample_hatch: str | None,
-        sample_hist_type: str,
-        data_label: str,
-        data_color: str,
-        data_line_style: str,
+        exonic_only: bool,
     ):
+        if exonic_only:
+            base_kwargs = _EXONIC_BASE_PLOT_KWARGS
+        else:
+            base_kwargs = _EXONIC_INTRONIC_BASE_PLOT_KWARGS
+
         super().__init__(
             null_hypothesis_samples=null_hypothesis_samples,
             data=data_results,
             column_key=column_key,
         )
 
-        self.sample_histogram_kwargs = {
+        self.sample_hist_kwargs = {
             "bins": "auto",
             "density": True,
-            "label": sample_label,
-            "facecolor": sample_color,
-            "edgecolor": sample_color,
-            "alpha": sample_alpha,
-            "hatch": sample_hatch,
-            "histtype": sample_hist_type,
+            "label": base_kwargs["sample_label"],
+            "facecolor": base_kwargs["sample_color"],
+            "edgecolor": base_kwargs["sample_color"],
+            "alpha": base_kwargs["sample_alpha"],
+            "hatch": base_kwargs["sample_hatch"],
+            "histtype": base_kwargs["sample_hist_type"],
         }
 
-        self.sample_kde_kwargs = {
-            "color": sample_color,
+        self.sample_plot_kwargs = {
+            "color": base_kwargs["sample_color"],
         }
 
-        self.data_histogram_kwargs = {
-            "label": data_label,
-            "col": data_color,
-            "ls": data_line_style,
+        self.data_vline_kwargs = {
+            "label": base_kwargs["data_label"],
+            "color": base_kwargs["data_color"],
+            "ls": base_kwargs["data_line_style"],
         }
 
     @classmethod
@@ -320,65 +347,158 @@ class _HistogramData(_Data):
         cls,
         null_hypothesis_samples: pd.DataFrame,
         data_results: pd.DataFrame,
-        column_key: str,
-        sample_label: str,
-        sample_color: str,
-        sample_alpha: float,
-        sample_hatch: str | None,
-        sample_hist_type: str,
-        data_label: str,
-        data_color: str,
-        data_line_style: str,
     ):
-        pass
+        return cls(
+            null_hypothesis_samples=null_hypothesis_samples,
+            data_results=data_results,
+            column_key="ON_dNdS",
+            exonic_only=True,
+        )
 
     @classmethod
     def off_exonic_only(
         cls,
         null_hypothesis_samples: pd.DataFrame,
         data_results: pd.DataFrame,
-        column_key: str,
-        sample_label: str,
-        sample_color: str,
-        sample_alpha: float,
-        sample_hatch: str | None,
-        sample_hist_type: str,
-        data_label: str,
-        data_color: str,
-        data_line_style: str,
     ):
-        pass
+        return cls(
+            null_hypothesis_samples=null_hypothesis_samples,
+            data_results=data_results,
+            column_key="OFF_dNdS",
+            exonic_only=True,
+        )
 
     @classmethod
     def on_exonic_intronic(
         cls,
         null_hypothesis_samples: pd.DataFrame,
         data_results: pd.DataFrame,
-        column_key: str,
-        sample_label: str,
-        sample_color: str,
-        sample_alpha: float,
-        sample_hatch: str | None,
-        sample_hist_type: str,
-        data_label: str,
-        data_color: str,
-        data_line_style: str,
     ):
-        pass
+        return cls(
+            null_hypothesis_samples=null_hypothesis_samples,
+            data_results=data_results,
+            column_key="ON_dNdS",
+            exonic_only=False,
+        )
 
     @classmethod
     def off_exonic_intronic(
         cls,
         null_hypothesis_samples: pd.DataFrame,
         data_results: pd.DataFrame,
-        column_key: str,
-        sample_label: str,
-        sample_color: str,
-        sample_alpha: float,
-        sample_hatch: str | None,
-        sample_hist_type: str,
-        data_label: str,
-        data_color: str,
-        data_line_style: str,
     ):
-        pass
+        return cls(
+            null_hypothesis_samples=null_hypothesis_samples,
+            data_results=data_results,
+            column_key="OFF_dNdS",
+            exonic_only=False,
+        )
+
+    def plot_hist(self, ax, zorder: int):
+        if self.is_available:
+            ax.hist(
+                self.null_hypothesis_samples[self.column_key],
+                zorder=zorder,
+                **self.sample_hist_kwargs,
+            )
+
+    def plot_kde(self, ax, zorder: int):
+        if self.is_available:
+            x_space = np.linspace(*self.estimates.integration_bounds, 1000)
+            ax.plot(
+                x_space,
+                self.estimates.estimator(x_space),
+                zorder=zorder,
+                **self.sample_plot_kwargs,
+            )
+
+    def plot_data(self, ax, zorder: int):
+        if self.is_available:
+            ax.axvline(
+                self.data_value, zorder=zorder, **self.data_vline_kwargs
+            )
+
+
+class PlotData:
+    def __init__(
+        self,
+        exonic_samples: pd.DataFrame,
+        exonic_intronic_samples: pd.DataFrame,
+        data_results: pd.DataFrame,
+    ):
+        on_exonic = _HistogramData.on_exonic_only(exonic_samples, data_results)
+        on_exonic_intronic = _HistogramData.on_exonic_intronic(
+            exonic_intronic_samples, data_results
+        )
+
+        off_exonic = _HistogramData.off_exonic_only(
+            exonic_samples, data_results
+        )
+        off_exonic_intronic = _HistogramData.off_exonic_intronic(
+            exonic_intronic_samples, data_results
+        )
+
+        self.on_data = [
+            data
+            for data in (on_exonic, on_exonic_intronic)
+            if data.is_available
+        ]
+
+        self.off_data = [
+            data
+            for data in (off_exonic, off_exonic_intronic)
+            if data.is_available
+        ]
+
+    def make_figure(self, job_cache: pathlib.Path):
+        fig, (ax_on, ax_off) = plt.subplots(1, 2, figsize=(8, 4))
+
+        ax_on.set_title("ON")
+        ax_off.set_title("OFF")
+
+        def update_value(old_value, new_value, method: Callable):
+            return (
+                new_value
+                if old_value is None
+                else method(old_value, new_value)
+            )
+
+        def render(data_sets, ax):
+            x_min = None
+            x_max = None
+
+            for idx, data_set in enumerate(data_sets):
+                # apply z order to retain sensible overlaying order in loop
+
+                # data_set: _HistogramData
+
+                data_set.plot_hist(ax=ax, zorder=idx)
+                data_set.plot_kde(ax=ax, zorder=idx + 2)
+                data_set.plot_data(ax=ax, zorder=idx + 4)
+
+                x_min = update_value(
+                    x_min, data_set.estimates.integration_bounds[0], min
+                )
+                x_max = update_value(
+                    x_max, data_set.estimates.integration_bounds[1], max
+                )
+
+            ax.set_xlim(x_min, x_max)
+
+        render(self.on_data, ax_on)
+        render(self.off_data, ax_off)
+
+        for ax in (ax_on, ax_off):
+            ax.grid()
+            ax.set_xlabel("$dN/dS$")
+            ax.set_ylabel("$P(dN/dS)$")
+
+        plt.tight_layout()
+
+        ax_on.legend(
+            frameon=False,
+            bbox_to_anchor=(2 if len(self.on_data) == 2 else 1.5, -0.2),
+            ncol=4,
+        )
+
+        plt.savefig(job_cache.joinpath("figure.pdf"), bbox_inches="tight")

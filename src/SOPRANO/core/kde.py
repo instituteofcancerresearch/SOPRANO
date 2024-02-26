@@ -233,11 +233,18 @@ def _samples_and_data_ara_available(
     data_available = True
 
     if null_hypothesis_samples_split.empty:
-        warnings.warn("Null hypothesis samples are empty!")
+        warnings.warn(
+            "Null hypothesis samples are empty! This is likely due to the "
+            "intronic rate being zero, "
+            "though you may wish to inspect your data."
+        )
         data_available = False
 
     if data.empty:
-        warnings.warn("Data is empty!")
+        warnings.warn(
+            "Data is empty! This is likely due to the intronic rate being "
+            "zero, though you may wish to inspect your data."
+        )
         data_available = False
 
     # return null_hypothesis_samples_split.shape[0] != 0 and not data.empty

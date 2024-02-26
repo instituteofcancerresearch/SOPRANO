@@ -23,7 +23,9 @@ dependencies = [
     "types-requests",
     "clint",
     "pytest",
-    "matplotlib"
+    "matplotlib",
+    "scipy",
+    "scikit-learn"
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",

@@ -49,6 +49,22 @@ class DefaultKDE:
     def get_cv_log_steps():
         return int(os.getenv(_CV_LOG_STEPS_ENV_VAR, _CV_LOG_STEPS))
 
+    @staticmethod
+    def get_int_abs_tol():
+        return float(os.getenv(_ABS_TOL_ENV_VAR, _ABS_TOL))
+
+    @staticmethod
+    def get_int_rel_tol():
+        return float(os.getenv(_REL_TOL_ENV_VAR, _REL_TOL))
+
+    @staticmethod
+    def get_int_step_size():
+        return float(os.getenv(_STEP_PCT_ENV_VAR, _STEP_PCT))
+
+    @staticmethod
+    def get_int_max_iter():
+        return int(os.getenv(_MAX_ITER_ENV_VAR, _MAX_ITER))
+
 
 def _sanitize_sklearn_input(
     data_frame: pd.DataFrame, key: str, make_2d=True, sort=False
@@ -275,10 +291,10 @@ class _Data:
             estimator=estimator,
             sample_values_min=samples.min(),
             sample_values_max=samples.max(),
-            absolute_tol=float(os.getenv(_ABS_TOL_ENV_VAR, _ABS_TOL)),
-            relative_tol=float(os.getenv(_REL_TOL_ENV_VAR, _REL_TOL)),
-            step_percent=float(os.getenv(_STEP_PCT_ENV_VAR, _STEP_PCT)),
-            max_iterations=int(os.getenv(_MAX_ITER_ENV_VAR, _MAX_ITER)),
+            absolute_tol=DefaultKDE.get_int_abs_tol(),
+            relative_tol=DefaultKDE.get_int_rel_tol(),
+            step_percent=DefaultKDE.get_int_step_size(),
+            max_iterations=DefaultKDE.get_int_max_iter(),
         )
 
         pvalues = _estimate_pvalue(

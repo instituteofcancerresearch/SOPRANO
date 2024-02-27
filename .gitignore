@@ -90,3 +90,5 @@ ensembl_downloads/**/*.fa.gz
 
 # Scratch stuff
 tmp/
+/docs/index.md
+/site/

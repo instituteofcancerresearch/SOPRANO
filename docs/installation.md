@@ -34,40 +34,34 @@ installation. Pull requests in this area are highly welcome.
 
 This installation guide assumes that users are in the repository root.
 
-1. Create and activate a host conda environment
-
+1. Create and activate a host conda environment  
    ```shell
    conda create --name soprano
    conda activate soprano
    ```  
 
-    1. Mac
-
+    1. Mac  
        ```shell
        conda config --env --set subdir osx-64
        conda env update ---file env.yml
        ```  
 
-    2. Linux
-
+    2. Linux  
        ```shell
        conda env update --file env.yml
        ```  
 
-2. Install R GitHub package dependencies
-
+2. Install R GitHub package dependencies  
    ```shell
    Rscript install_R_pkgs.R
    ```  
 
-3. Install Python package and corresponding dependencies
-
+3. Install Python package and corresponding dependencies  
    ```shell
    pip install -e .[<flavour>]
    ```  
 
-4. Decompress transcript files
-
+4. Decompress transcript files  
    ```shell
    gunzip -k data/aux_soprano/*.gz
    ```

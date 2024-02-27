@@ -1,8 +1,7 @@
 site_name: SOPRANO
 nav:
-  - Home: README.md
-  - Installation:
-    - install/automatic.md
-    - install/manual.md
+  - Home: index.md
+  - Installation: installation.md
+
 theme:
   name: material

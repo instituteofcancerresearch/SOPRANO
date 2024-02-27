@@ -15,16 +15,13 @@ main offerings:
 serving local and high-performance computing environments, distributed over 
 MPI.
 
-### Documentation
+## Quick links
 
-Available on this [site](https://instituteofcancerresearch.github.io/SOPRANO/).
+- **Documentation** is available on this [site](https://instituteofcancerresearch.github.io/SOPRANO/).
 
-### Issues
-
-Please raise issues and questions
+- **Issues** should be raised
 [here](https://github.com/instituteofcancerresearch/SOPRANO/issues).
 
-### References
+- **Reference** the SOPRANO method with [Zapata et al](https://www.researchgate.net/publication/369116811_Immune_selection_determines_tumor_antigenicity_and_influences_response_to_checkpoint_inhibitors).
 
-See [Zapata et al](https://www.researchgate.net/publication/369116811_Immune_selection_determines_tumor_antigenicity_and_influences_response_to_checkpoint_inhibitors),
-and the corresponding [original repository](https://github.com/luisgls/SOPRANO).
+- **View** the original repository [here](https://github.com/luisgls/SOPRANO).

@@ -13,7 +13,7 @@ The SOPRANO interface is organized into a collection of steps
 - Step 3: Prepare immunopeptidome file
 - Step 4: Run pipeline
 
-### App data sources
+## App data sources
 
 By default, the application will serve options for the annotated mutation
 and human immunopeptidome files shipped with SOPRANO. Additional files
@@ -26,19 +26,17 @@ folders:
   so long as they have the extension pattern `*anno*`. E.g., `mutations.anno`
   or `mutations.annotated`.
 
-
 - `./app_sources/immunopeptidomes`
 
   User defined immunopeptidomes BED files placed in this directory will be
   detected, so long as they have the extension `.bed`. E.g., `immuno.bed`.
-
 
 - `./app_sources/coordinate_files`
 
   User defined BED files that can be used for randomization will be detected,
   so long as they have the extension `.bed`. E.g., `randoms.bed`.
 
-### Development status
+## Development status
 
 This app is actively being developed (November 2023). The configuration is
 subject to change, and additional features are soon to be integrated.

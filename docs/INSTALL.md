@@ -1,6 +1,11 @@
 # Installation
 
-SOPRANO is supported on Linux and MacOS.
+SOPRANO is compatible with Linux and MacOS. It is primarily written in Python,
+but supplemented by some R, Perl, Bash, and bioinformatic utilities; such as
+[bedtools](https://bedtools.readthedocs.io/en/latest/).
+
+Due to the variety of languages, **installation is recommended via a
+conda environment**.
 
 ## Quick start installation
 
@@ -40,7 +45,7 @@ After creation, the environment can be activated with
 conda activate soprano
 ```
 
-#### MacOS note:
+[//]: # (#### MacOS note)
 
 Mac users with the latest system architecture may instead be required to:
 
@@ -73,7 +78,7 @@ After creation, the environment can be activated with
 source .venv/bin/activate
 ```
 
-#### MacOS note:
+#### MacOS note
 
 Some GNU command line utilities are not shipped with MacOS natively, but can
 can be installed with e.g.,

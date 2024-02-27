@@ -64,8 +64,8 @@ MPI.
 
 ### Contact
 
-Please raise issues and questions [here], tagging [@luisgls](https://www.github.com/luisgls),
-[@bkmarzouk](https://www.github.com/bkmarzouk).
+Please raise issues and questions
+[here](https://github.com/instituteofcancerresearch/SOPRANO/issues).
 
 [^1]: See [Zapata et al](https://www.researchgate.net/publication/369116811_Immune_selection_determines_tumor_antigenicity_and_influences_response_to_checkpoint_inhibitors),
 and the corresponding [original repository](https://github.com/luisgls/SOPRANO).

@@ -129,6 +129,8 @@ def with_tab_pipeline(tab: DeltaGenerator):
         )
 
         if st.button("Run Pipeline", disabled=not ready):
+            job_name_processed.mkdir(exist_ok=True)
+
             params = objects.Parameters(
                 analysis_name=job_name_selection,
                 input_path=annotation_processed,
@@ -142,6 +144,7 @@ def with_tab_pipeline(tab: DeltaGenerator):
                 transcripts=objects.TranscriptPaths.defaults(),
                 genomes=genome_processed,
             )
+
             RunTab.pipeline(params=params)
 
 

@@ -1,7 +1,12 @@
-# SOPRANO: Selection On PRotein ANnotated regiOns
+# SOPRANO
 
-[![SOPRANO (Dev) Tests](https://github.com/instituteofcancerresearch/SOPRANO/actions/workflows/main_tests.yml/badge.svg)](https://github.com/instituteofcancerresearch/SOPRANO/actions/workflows/main_tests.yml)
-[![SOPRANO (Dev) Tests](https://github.com/instituteofcancerresearch/SOPRANO/actions/workflows/dev_tests.yml/badge.svg)](https://github.com/instituteofcancerresearch/SOPRANO/actions/workflows/dev_tests.yml)
+**_Selection On PRotein ANnotated regiOns_**
+
+***
+
+[![Main Tests](https://github.com/instituteofcancerresearch/SOPRANO/actions/workflows/main_tests.yml/badge.svg)](https://github.com/instituteofcancerresearch/SOPRANO/actions/workflows/main_tests.yml)
+[![Dev Tests](https://github.com/instituteofcancerresearch/SOPRANO/actions/workflows/dev_tests.yml/badge.svg)](https://github.com/instituteofcancerresearch/SOPRANO/actions/workflows/dev_tests.yml)
+[![Python 3.10|11](https://img.shields.io/badge/Python-3.10_|_3.11-blue.svg)](https://img.shields.io/badge/Python-3.10_|_3.11-blue.svg)
 
 The SOPRANO method was developed to quantify selection in specific regions of
 the genome.

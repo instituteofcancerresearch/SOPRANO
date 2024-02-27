@@ -15,14 +15,16 @@ re-implementation.
 Users with **Anaconda**, or **Mamba**, available on their system can attempt an
 automated installation from their command line:
 
-      . setup.sh <flavour>
+```shell
+. setup.sh <flavour>
+```
 
 The flavour of the installation is **optional**, and may be omitted. Currently
-available options are:  
+available options are:
 
-- `mpi` - recommended for CLI users who user and HPC installations.  
+- `mpi` - recommended for CLI users who user and HPC installations.
 - `dev` - for developers; who are further recommended to `pre-commit install`
-hooks for standardized static analysis before CI.  
+  hooks for standardized static analysis before CI.
 
 Some users have reported issues with the automatic installation, in particular
 on macOS systems. If you experience problems, please refer to the manual
@@ -34,35 +36,49 @@ This installation guide assumes that users are in the repository root.
 
 1. Create and activate a host conda environment
 
-       conda create --name soprano
-       conda activate soprano
+   ```shell
+   conda create --name soprano
+   conda activate soprano
+   ```  
 
-   1. Mac
+    1. Mac
 
-           conda config --env --set subdir osx-64
-           conda env update ---file env.yml
+       ```shell
+       conda config --env --set subdir osx-64
+       conda env update ---file env.yml
+       ```  
 
-   2. Linux
+    2. Linux
 
-           conda env update --file env.yml
+       ```shell
+       conda env update --file env.yml
+       ```  
 
 2. Install R GitHub package dependencies
 
-        Rscript install_R_pkgs.R
+   ```shell
+   Rscript install_R_pkgs.R
+   ```  
 
 3. Install Python package and corresponding dependencies
 
-        pip install -e .[<flavour>]
+   ```shell
+   pip install -e .[<flavour>]
+   ```  
 
 4. Decompress transcript files
 
-        gunzip -k data/aux_soprano/*.gz
+   ```shell
+   gunzip -k data/aux_soprano/*.gz
+   ```
 
 ## Validate your installation
 
 After completing either installation procedure, users are encouraged to run
 the installation tests, via
 
-      pytest -s tests/test_installation.py
+```shell
+pytest -s tests/test_installation.py
+```  
 
 All tests should pass.

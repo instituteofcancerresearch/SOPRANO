@@ -1,0 +1,6 @@
+site_name: SOPRANO
+nav:
+  - Home: README.md
+  - Installation: INSTALL.md
+theme:
+  name: material

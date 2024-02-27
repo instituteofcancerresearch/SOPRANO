@@ -2,30 +2,52 @@
 
 # SOPRANO: Selection On PRotein ANnotated regiOns
 The SOPRANO method was developed to quantify selection in specific regions of 
-the genome (Zapata et al, in revision). It calculates ON- and OFF-target dN/dS 
+the genome[^1]. 
+It calculates ON- and OFF-target dN/dS 
 using a set of annotated somatic point mutations and a transcript coordinates 
 file. 
 
-_What inputs does SOPRANO require?_
+This repository is a Python reimplementation of the original method with two
+main offerings:
+1) An application interface to easily pre-process the relevant input files; and
+2) A scalable command line utility to run the SOPRANO pipeline for dN/dS, 
+serving local and high-performance computing environments, distributed over 
+MPI.
 
-- A set of mutations (missense/truncating) and their respective functional 
-annotation (derived from ensembl VEP). Mutations can be filtered a priori by the user 
-(i.e. by predicted binding affinity or by expression status).
+[//]: # (_What inputs does SOPRANO require?_)
 
-- A set of ensembl transcript coordinates where selection will be estimated.
+[//]: # ()
+[//]: # (- A set of mutations &#40;missense/truncating&#41; and their respective functional )
 
-_How does SOPRANO calculate dN/dS?_
+[//]: # (annotation &#40;derived from ensembl VEP&#41;. Mutations can be filtered a priori by )
 
-- "ON" dN/dS is the value calculated inside the coordinates provided using a 
-192-trinucleotide correction signature obtained "on-the-fly" from the input 
-mutation file. Alternatively, the user can provide a pre-calculated 
-trinucleotide mutation frequency file. Importantly, ON dN/dS and OFF dN/dS 
-(the portion outside the coordinates provided) will be calculated only using 
-transcripts defined in this file. 
+[//]: # (the user &#40;i.e. by predicted binding affinity or by expression status&#41;.)
 
-SOPRANO can be run from the command line, or via a streamlit app interface. 
-There are additional tools built within the SOPRANO installation that enable 
-users to download genomes, link existing VEP caches, and annotate VCF files.
+[//]: # ()
+[//]: # (- A set of ensembl transcript coordinates where selection will be estimated.)
+
+[//]: # ()
+[//]: # (_How does SOPRANO calculate dN/dS?_)
+
+[//]: # ()
+[//]: # (- "ON" dN/dS is the value calculated inside the coordinates provided using a )
+
+[//]: # (192-trinucleotide correction signature obtained "on-the-fly" from the input )
+
+[//]: # (mutation file. Alternatively, the user can provide a pre-calculated )
+
+[//]: # (trinucleotide mutation frequency file. Importantly, ON dN/dS and OFF dN/dS )
+
+[//]: # (&#40;the portion outside the coordinates provided&#41; will be calculated only using )
+
+[//]: # (transcripts defined in this file. )
+
+[//]: # ()
+[//]: # (SOPRANO can be run from the command line, or via a streamlit app interface. )
+
+[//]: # (There are additional tools built within the SOPRANO installation that enable )
+
+[//]: # (users to download genomes, link existing VEP caches, and annotate VCF files.)
 
 ## Documentation
 
@@ -42,5 +64,8 @@ users to download genomes, link existing VEP caches, and annotate VCF files.
 
 ### Contact
 
-- [Luis Zapata](mailto:Luis.Zapata@icr.ac.uk)
-- [Kareem Marzouk](mailto:Kareem.Marzouk@icr.ac.uk) / [ICR Scientific Software Group](mailto:scientificcomputingteam@icr.ac.uk)
+Please raise issues and questions [here], tagging [@luisgls](https://www.github.com/luisgls),
+[@bkmarzouk](https://www.github.com/bkmarzouk).
+
+[^1]: See [Zapata et al](https://www.researchgate.net/publication/369116811_Immune_selection_determines_tumor_antigenicity_and_influences_response_to_checkpoint_inhibitors),
+and the corresponding [original repository](https://github.com/luisgls/SOPRANO).

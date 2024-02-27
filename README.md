@@ -17,8 +17,8 @@ file.
 This repository is a Python reimplementation of the original method with two
 main offerings:
 
-1) An application interface to easily pre-process the relevant input files; and
-2) A scalable command line utility to run the SOPRANO pipeline for dN/dS,
+1. An application interface to easily pre-process the relevant input files.  
+2. A scalable command line utility to run the SOPRANO pipeline for dN/dS,
 serving local and high-performance computing environments, distributed over
 MPI.
 

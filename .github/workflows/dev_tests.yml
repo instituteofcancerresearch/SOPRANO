@@ -1,4 +1,4 @@
-name: SOPRANO (Dev) Tests
+name: SOPRANO Tests (dev)
 
 on:
   pull_request:

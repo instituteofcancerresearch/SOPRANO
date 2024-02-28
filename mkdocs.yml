@@ -2,6 +2,14 @@ site_name: SOPRANO
 nav:
   - Home: index.md
   - Installation: installation.md
+  - Command line interface:
+      - Overview: cli/cli_overview.md
+      - soprano-run:
+        - Inputs: cli/soprano-run/inputs.md
+        - Outputs: cli/soprano-run/outputs.md
+        - Examples: cli/soprano-run/examples.md
+  - Application interface:
+      - Overview: app/app_overview.md
 theme:
   name: material
   features:
@@ -17,3 +25,5 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.superfences
+  - attr_list
+  - md_in_html

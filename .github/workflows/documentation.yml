@@ -2,7 +2,8 @@ name: documentation
 on:
   push:
     branches:
-      - 27-update-documentation
+      - python-dev
+      - python
 permissions:
   contents: write
 jobs:

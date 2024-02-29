@@ -13,8 +13,7 @@ nav:
       - soprano-get-genome: cli/soprano-get-genome.md
       - soprano-hla2ip: cli/soprano-hla2ip.md
       - soprano-link-vep: cli/soprano-link-vep.md
-  - Application interface:
-      - Overview: app/app_overview.md
+  - Application interface: app_overview.md
 theme:
   name: material
   features:

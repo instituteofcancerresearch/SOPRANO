@@ -6,6 +6,8 @@ MD013:
   line_length: 79
   tables: false
   links: false
+  code_block_line_length: false
+  code_blocks: false
 
 # MD031 - Fenced code blocks should be surrounded by blank lines
 # This messes with the mkdocs ...

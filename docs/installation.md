@@ -10,6 +10,8 @@ alternative variant, such as
 [Mamba](https://mamba.readthedocs.io/en/latest/index.html); a highly efficient
 re-implementation.
 
+***
+
 ## Automatic installation
 
 Users with **Anaconda**, or **Mamba**, available on their system can attempt an
@@ -29,6 +31,8 @@ available options are:
 Some users have reported issues with the automatic installation, in particular
 on macOS systems. If you experience problems, please refer to the manual
 installation. Pull requests in this area are highly welcome.
+
+***
 
 ## Manual installation
 

@@ -7,15 +7,16 @@ DEPS_FATAL=false
 # Parse installation method for pip
 if [ "$#" -eq 0 ]
 then
-  echo "Will install standard PyPI dependencies"
+  echo "Will install standard flavour dependencies"
   INSTALL_METHOD=""
-elif [ "$1" == "dev" ] || [ "$1" == "ci" ]
+elif [ "$1" == "dev" ] || [ "$1" == "ci" ] || [ "$1" == "mpi" ]
 then
-  echo "Will install $1 PyPI dependencies"
+  echo "Will install $1 flavour dependencies"
   INSTALL_METHOD="[$1]"
 else
-  echo "Will install dev PyPI dependencies"
-  INSTALL_METHOD="[dev]"
+  echo "Unrecognized flavour..."
+  echo "Will install standard flavour dependencies"
+  INSTALL_METHOD=""
 fi
 _PIP_CMD="pip install -e .$INSTALL_METHOD"
 
@@ -142,7 +143,9 @@ then
       echo "Installation procedure complete."
       echo "After pulling an updated version of the repository"
       echo "run this setup script. Otherwise, call"
-      echo "    conda activate $ENV_NAME"
+      echo ""
+      echo "conda activate $ENV_NAME"
+      echo ""
       echo "to load the environment."
     else
       echo ""

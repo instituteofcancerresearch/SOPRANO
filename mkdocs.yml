@@ -1,0 +1,33 @@
+site_name: SOPRANO
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Statistics: statistics.md
+  - Command line interface:
+      - Overview: cli/cli_overview.md
+      - soprano-run:
+        - Inputs: cli/soprano-run/inputs.md
+        - Outputs: cli/soprano-run/outputs.md
+        - Examples: cli/soprano-run/examples.md
+      - soprano-annotate: cli/soprano-annotate.md
+      - soprano-get-genome: cli/soprano-get-genome.md
+      - soprano-hla2ip: cli/soprano-hla2ip.md
+      - soprano-link-vep: cli/soprano-link-vep.md
+  - Application interface: app_overview.md
+theme:
+  name: material
+  features:
+    - content.code.copy
+markdown_extensions:
+  - def_list
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - attr_list
+  - md_in_html

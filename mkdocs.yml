@@ -2,6 +2,7 @@ site_name: SOPRANO
 nav:
   - Home: index.md
   - Installation: installation.md
+  - Statistics: statistics.md
   - Command line interface:
       - Overview: cli/cli_overview.md
       - soprano-run:

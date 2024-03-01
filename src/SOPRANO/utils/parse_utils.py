@@ -11,7 +11,7 @@ def _add_core_genome_args(parser: argparse.ArgumentParser):
         "-s",
         dest="species",
         type=str,
-        help="Ensembl species Latin name. " "Default: homo_sapiens.",
+        help="Ensembl species Latin name.",
         default="homo_sapiens",
     )
 
@@ -20,7 +20,7 @@ def _add_core_genome_args(parser: argparse.ArgumentParser):
         "-a",
         dest="assembly",
         type=str,
-        help="Ensembl genome assembly ID. Default: GRCh38.",
+        help="Ensembl genome assembly ID.",
         default="GRCh38",
     )
 
@@ -29,7 +29,7 @@ def _add_core_genome_args(parser: argparse.ArgumentParser):
         "-r",
         dest="release",
         type=int,
-        help="Ensembl release number. Default: 110.",
+        help="Ensembl release number.",
         default=110,
     )
 
@@ -46,7 +46,10 @@ def fix_ns_species_arg(_namespace: argparse.Namespace) -> argparse.Namespace:
 
 
 def parse_genome_args(argv=None):
-    parser = argparse.ArgumentParser(description="Genome reference")
+    parser = argparse.ArgumentParser(
+        description="Genome reference",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser = _add_core_genome_args(parser)
 
     parser.add_argument(
@@ -63,7 +66,11 @@ def parse_genome_args(argv=None):
 
 
 def parse_args(argv=None):
-    parser = argparse.ArgumentParser(description="SOPRANO input arguments")
+    parser = argparse.ArgumentParser(
+        description="SOPRANO input arguments",
+        fromfile_prefix_chars="@",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
 
     parser.add_argument(
         "--input",
@@ -119,13 +126,13 @@ def parse_args(argv=None):
         help="If flag is used ssb192 will be used, otherwise ssb7.",
     )
 
-    analysis_params_group.add_argument(
-        "--use_random",
-        dest="use_random",
-        action="store_true",
-        help="If flag is used, calculate a dNdS calue for a random region "
-        "similar to the target.",
-    )
+    # analysis_params_group.add_argument(
+    #     "--use_random",
+    #     dest="use_random",
+    #     action="store_true",
+    #     help="If flag is used, calculate a dNdS value for a random region "
+    #     "similar to the target.",
+    # )
 
     analysis_params_group.add_argument(
         "--keep_drivers",
@@ -141,9 +148,17 @@ def parse_args(argv=None):
         dest="seed",
         default=-1,
         type=int,
-        help="Provide seed value for shuffle process in randomization. By "
-        "default, seed value is < 0, for which, no seed value will be "
-        "applied.",
+        help="Provide seed value for shuffle process in randomization. "
+        "If seed value is < 0, no seed value will be applied.",
+    )
+
+    analysis_params_group.add_argument(
+        "--n_samples",
+        "-z",
+        dest="n_samples",
+        default=0,
+        type=int,
+        help="Provide number of samples to use in dNdS error estimates.",
     )
 
     transcript_args = parser.add_argument_group()
@@ -152,8 +167,7 @@ def parse_args(argv=None):
         "--transcript",
         "-t",
         dest="transcript",
-        help=f"Provide path to transcript file. Default: "
-        f"{objects.TranscriptPaths.defaults().transcript_length}",
+        help="Provide path to transcript file",
         default=objects.TranscriptPaths.defaults().transcript_length,
         type=pathlib.Path,
     )
@@ -162,8 +176,7 @@ def parse_args(argv=None):
         "--protein_transcript",
         "-p",
         dest="protein_transcript",
-        help=f"Provide path to protein transcript file. Default: "
-        f"{objects.TranscriptPaths.defaults().protein_transcript_length}",
+        help="Provide path to protein transcript file",
         default=objects.TranscriptPaths.defaults().protein_transcript_length,
         type=pathlib.Path,
     )
@@ -172,8 +185,7 @@ def parse_args(argv=None):
         "--fasta",
         "-f",
         dest="transcript_ids",
-        help=f"Provide path to the ensembl transcript IDs fasta file. "
-        f"Default: {objects.TranscriptPaths.defaults().transcript_fasta}",
+        help="Provide path to the ensembl transcript IDs fasta file.",
         default=objects.TranscriptPaths.defaults().transcript_fasta,
         type=pathlib.Path,
     )
@@ -195,7 +207,10 @@ def parse_args(argv=None):
 
 
 def parse_hla(argv=None):
-    parser = argparse.ArgumentParser("Parse HLA parameters")
+    parser = argparse.ArgumentParser(
+        "Parse HLA parameters",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser.add_argument(
         "--alleles",
         "-a",
@@ -219,8 +234,7 @@ def parse_hla(argv=None):
         dest="cache_dir",
         type=pathlib.Path,
         default=Directories.app_immunopeptidomes(),
-        help=f"Cache location for immunopeptidome file. "
-        f"Default: {Directories.app_immunopeptidomes()}",
+        help="Cache location for immunopeptidome file.",
     )
     parser.add_argument(
         "--restrict",
@@ -229,7 +243,7 @@ def parse_hla(argv=None):
         nargs="*",
         type=str,
         required=False,
-        help="Space seperated Ensembl transcript IDs. Default: []",
+        help="Space seperated Ensembl transcript IDs.",
         default=[],
     )
     parser.add_argument(
@@ -239,7 +253,7 @@ def parse_hla(argv=None):
         nargs="*",
         type=str,
         required=False,
-        help="Space seperated Ensembl transcript IDs. Default: []",
+        help="Space seperated Ensembl transcript IDs.",
         default=[],
     )
 
@@ -247,7 +261,10 @@ def parse_hla(argv=None):
 
 
 def parse_vcf_sources(argv=None):
-    parser = argparse.ArgumentParser(description="VCF file annotations")
+    parser = argparse.ArgumentParser(
+        description="VCF file annotations",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
 
     parser.add_argument(
         "--source",
@@ -269,17 +286,41 @@ def parse_vcf_sources(argv=None):
         dest="cache_dir",
         type=pathlib.Path,
         default=Directories.app_annotated_inputs(),
-        help=f"Provide path to directory that will contain output. Default: "
-        f"{Directories.app_annotated_inputs()}",
+        help="Provide path to directory that will contain output.",
     )
     parser.add_argument(
         "--assembly",
         "-a",
         dest="assembly",
         type=str,
-        help="Provide the genome assembly associated with the VCF sources."
-        "Default: GRCh38.",
+        help="Provide the genome assembly associated with the VCF sources.",
         default="GRCh38",
     )
 
     return parser.parse_args(argv)
+
+
+def parse_link_vep_cache_args():
+    parser = argparse.ArgumentParser(
+        description="VEP cache parser",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    parser.add_argument(
+        "--cache",
+        "-c",
+        dest="src_cache",
+        type=pathlib.Path,
+        help="Provide the path to the ensembl vep cache.",
+        default=Directories.std_sys_vep(),
+    )
+
+    src_cache: pathlib.Path = parser.parse_args().src_cache
+
+    if not src_cache.exists():
+        raise FileNotFoundError(src_cache)
+
+    if not src_cache.is_dir():
+        raise NotADirectoryError(src_cache)
+
+    return src_cache

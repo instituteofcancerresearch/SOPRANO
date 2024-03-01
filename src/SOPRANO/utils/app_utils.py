@@ -628,6 +628,11 @@ class ImmunopeptidomeUIProcessing(_ImmunopeptidomeUI):
 class RunTab:
     @staticmethod
     def pipeline(params: Parameters):
+        running_msg = st.warning(
+            "Pipeline run in progress ... please wait until this "
+            "process has finished."
+        )
+
         params.cache_dir.mkdir(exist_ok=True)
         output = st.empty()
         with st_capture(output.code):
@@ -636,6 +641,8 @@ class RunTab:
             with st_capture(output.code):
                 run_pipeline(params)
             t_end = time()
+
+        running_msg.empty()
 
         data_frame = pd.read_csv(params.results_path, sep="\t")
 

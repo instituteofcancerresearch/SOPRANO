@@ -87,3 +87,8 @@ data/ensembl.releases
 ensembl_downloads/**/*.fa
 ensembl_downloads/**/*.fa.gz
 /src/SOPRANO/R/tmp/
+
+# Scratch stuff
+tmp/
+/docs/index.md
+/site/

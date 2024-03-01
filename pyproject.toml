@@ -22,7 +22,10 @@ dependencies = [
     "requests",
     "types-requests",
     "clint",
-    "pytest"
+    "pytest",
+    "matplotlib",
+    "scipy",
+    "scikit-learn"
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -48,7 +51,11 @@ dev = [
     "pytest-dependency",
     "isort",
     "pre-commit",
-    "mypy"
+    "mypy",
+    "mpi4py"
+]
+mpi = [
+    "mpi4py"
 ]
 ci = [
     "black",

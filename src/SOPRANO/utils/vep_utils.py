@@ -1,4 +1,3 @@
-import argparse
 import pathlib
 from typing import List, Tuple
 
@@ -102,27 +101,3 @@ def _link_vep_cache(vep_cache: pathlib.Path):
     else:
         src_dst = _get_src_dst_link_pairs(vep_cache)
         _link_src_dst_pairs(src_dst)
-
-
-def _link_vep_cache_parser():
-    parser = argparse.ArgumentParser(description="VEP cache parser")
-
-    parser.add_argument(
-        "--cache",
-        "-c",
-        dest="src_cache",
-        type=pathlib.Path,
-        help="Provide the path to the ensembl vep cache. By default, will "
-        "attempt to link sources from $HOME/.vep",
-        default=Directories.std_sys_vep(),
-    )
-
-    src_cache: pathlib.Path = parser.parse_args().src_cache
-
-    if not src_cache.exists():
-        raise FileNotFoundError(src_cache)
-
-    if not src_cache.is_dir():
-        raise NotADirectoryError(src_cache)
-
-    return src_cache

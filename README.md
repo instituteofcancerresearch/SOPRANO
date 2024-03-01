@@ -1,46 +1,34 @@
-[![SOPRANO (Dev) Tests](https://github.com/instituteofcancerresearch/SOPRANO/actions/workflows/dev_tests.yml/badge.svg)](https://github.com/instituteofcancerresearch/SOPRANO/actions/workflows/dev_tests.yml)
+# SOPRANO
 
-# SOPRANO: Selection On PRotein ANnotated regiOns
-The SOPRANO method was developed to quantify selection in specific regions of 
-the genome (Zapata et al, in revision). It calculates ON- and OFF-target dN/dS 
-using a set of annotated somatic point mutations and a transcript coordinates 
-file. 
+**_Selection On PRotein ANnotated regiOns_**
 
-_What inputs does SOPRANO require?_
+***
 
-- A set of mutations (missense/truncating) and their respective functional 
-annotation (derived from ensembl VEP). Mutations can be filtered a priori by the user 
-(i.e. by predicted binding affinity or by expression status).
+[![Main Tests](https://github.com/instituteofcancerresearch/SOPRANO/actions/workflows/main_tests.yml/badge.svg)](https://github.com/instituteofcancerresearch/SOPRANO/actions/workflows/main_tests.yml)
+[![Dev Tests](https://github.com/instituteofcancerresearch/SOPRANO/actions/workflows/dev_tests.yml/badge.svg)](https://github.com/instituteofcancerresearch/SOPRANO/actions/workflows/dev_tests.yml)
+[![Python 3.10|11](https://img.shields.io/badge/Python-3.10_|_3.11-blue.svg)](https://img.shields.io/badge/Python-3.10_|_3.11-blue.svg)
 
-- A set of ensembl transcript coordinates where selection will be estimated.
+The SOPRANO method was developed to quantify selection in specific regions of
+the genome.
+It calculates ON- and OFF-target dN/dS
+using a set of annotated somatic point mutations and a transcript coordinates
+file.
 
-_How does SOPRANO calculate dN/dS?_
+This repository is a Python reimplementation of the original method with two
+main offerings:
 
-- "ON" dN/dS is the value calculated inside the coordinates provided using a 
-192-trinucleotide correction signature obtained "on-the-fly" from the input 
-mutation file. Alternatively, the user can provide a pre-calculated 
-trinucleotide mutation frequency file. Importantly, ON dN/dS and OFF dN/dS 
-(the portion outside the coordinates provided) will be calculated only using 
-transcripts defined in this file. 
+1. An application interface to easily pre-process the relevant input files.  
+2. A scalable command line utility to run the SOPRANO pipeline for dN/dS,
+serving local and high-performance computing environments, distributed over
+MPI.
 
-SOPRANO can be run from the command line, or via a streamlit app interface. 
-There are additional tools built within the SOPRANO installation that enable 
-users to download genomes, link existing VEP caches, and annotate VCF files.
+## Quick links
 
-## Documentation
+- **Documentation** is available on this [site](https://instituteofcancerresearch.github.io/SOPRANO/).
 
-- [Installation](docs/INSTALL.md) - Building the environment and installing SOPRANO
-- [CLI](docs/CLI.md) - Running SOPRANO from the command line.
-- [GUI](docs/APP.md) - Running SOPRANO from your web browser.
-- [Genomes](docs/GENOMES.md) - Downloading and preparing reference genome files.
-- [Link VEP](docs/VEP.md) - Linking your existing VEP cache files.
-- [Inputs 1](docs/INPUT.md) - Overview of the VEP annotated input.
-- [Inputs 2](docs/BED.md) - Overview of the immunopeptidome input.
-- [Output](docs/OUTPUT.md) - Overview of the summary statistics computed by SOPRANO.
-- [Patient Specific](docs/PATIENTS.md) - How to obtain a patient specific immune dN/dS.
-- [Notes](docs/NOTES.md) - Notes on and limitations of this software.
+- **Issues** should be raised
+[here](https://github.com/instituteofcancerresearch/SOPRANO/issues).
 
-### Contact
+- **Reference** the SOPRANO method with [Zapata et al](https://www.researchgate.net/publication/369116811_Immune_selection_determines_tumor_antigenicity_and_influences_response_to_checkpoint_inhibitors).
 
-- [Luis Zapata](mailto:Luis.Zapata@icr.ac.uk)
-- [Kareem Marzouk](mailto:Kareem.Marzouk@icr.ac.uk) / [ICR Scientific Software Group](mailto:scientificcomputingteam@icr.ac.uk)
+- **View** the original repository [here](https://github.com/luisgls/SOPRANO).

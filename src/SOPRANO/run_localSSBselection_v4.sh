@@ -4,14 +4,18 @@
 ####Hardcode where genome and fasta file are
 ####Version 3.1
 
-BASEDIR=/mnt/c/Users/kmarzouk/software/SOPRANO/src/SOPRANO
-SUPA=$BASEDIR/data 
-TRANS=$BASEDIR/data/ensemble_transcriptID.fasta
-TMP=/home/kareem/SOPRANO_CACHE_TMP/tmp # $BASEDIR/tmp
-__DATA=/mnt/c/Users/kmarzouk/software/SOPRANO/src/SOPRANO/data/homo_sapiens/110_GRCh37
+BASEDIR=/path/to/SOPRANO/src/SOPRANO
+SUPA=/path/to/SOPRANO/data/aux_soprano
+TRANS=$SUPA/ensemble_transcriptID.fasta
+TMP=/tmp/foo # $BASEDIR/tmp
+__DATA=/path/to/SOPRANO/ensembl_downloads/homo_sapiens/110_GRCh37
 FASTA=$__DATA/Homo_sapiens.GRCh37.dna.toplevel.fa
 GENOME=$__DATA/Homo_sapiens.GRCh37.dna.toplevel.chrom
 
+echo "Using FAST: $FASTA"
+echo "Using GENOME: $GENOME"
+
+# . run_localSSBselection_v4.sh -i ../../data/example_annotations/TCGA-05-4396-01A-21D-1855-08.annotated -b ../../data/example_immunopeptidomes/TCGA-05-4396.Expressed.IEDBpeps.SB.epitope.bed -o /tmp/foo -n CHECK -m ssb7 -e true
 
 ###Check arguments before running
 if (($# < 8));  then
@@ -34,10 +38,10 @@ fi
 echo "STEP 1: Reading all arguments and input files"
 while getopts "i:b:o:n:m:r:e:t:" opt; do
     case $opt in
-	i)
-	echo "#-i was triggered, Input File: $OPTARG" >&2 
-	FILE=$OPTARG
-	;;
+        i)
+        echo "#-i was triggered, Input File: $OPTARG" >&2
+        FILE=$OPTARG
+        ;;
         o)
         echo "#-o was triggered, Output folder: $OPTARG" >&2
         OUT=$OPTARG
@@ -50,10 +54,10 @@ while getopts "i:b:o:n:m:r:e:t:" opt; do
         echo "#-n was triggered, Name: $OPTARG" >&2
         NAME=$OPTARG
         ;;
-	m)
-	echo "#-m was triggered, Substitution model: $OPTARG" >&2 
-	MUTRATE=$OPTARG
-	;;
+        m)
+        echo "#-m was triggered, Substitution model: $OPTARG" >&2
+        MUTRATE=$OPTARG
+        ;;
         r)
         echo "#-r was triggered, Parameter: $OPTARG" >&2
         MODEL=$OPTARG
@@ -76,6 +80,8 @@ while getopts "i:b:o:n:m:r:e:t:" opt; do
 	;;	
     esac
 done
+
+echo "USING NAME: $NAME"
 
 ###Check if file exists and is not empty
 if [[ ! -s $FILE ]] ; then
@@ -106,7 +112,7 @@ then
 
     ##Sort excluded regions file
     sortBed -i $TMP/$NAME.exclusion.ori > $TMP/$NAME.exclusion.bed
-    bedtools shuffle -i $BED -g $TMP/$NAME.protein_length_filt.txt -excl $TMP/$NAME.exclusion.bed -chrom > $TMP/$NAME.epitopes.ori2
+    bedtools shuffle -i $BED -g $TMP/$NAME.protein_length_filt.txt -excl $TMP/$NAME.exclusion.bed -chrom -seed 333 > $TMP/$NAME.epitopes.ori2
 
     ###Option to randomize only on a set of target protein regions
     if [ -s "$TARGET" ]
@@ -115,7 +121,7 @@ then
         ###Subset transcript protein length and transcript length
         cut -f1 $TARGET | sort -u | fgrep -w -f - $SUPA/ensemble_transcript_protein.length >> $TMP/$NAME.protein_length_filt.txt
         cut -f1 $TARGET | sort -u | fgrep -w -f - $SUPA/ensemble_transcript.length >> $TMP/$NAME.transcript_length_filt.txt
-        bedtools shuffle -i $BED -g $TMP/$NAME.protein_length_filt.txt -incl $TARGET -noOverlapping > $TMP/$NAME.epitopes.ori2
+        bedtools shuffle -i $BED -g $TMP/$NAME.protein_length_filt.txt -incl $TARGET -noOverlapping -seed 333 > $TMP/$NAME.epitopes.ori2
     else
         echo "Target file to randomize regions not provided, using default (all)"
     fi
@@ -264,9 +270,17 @@ else
     #3
     paste $NAME.tmp $NAME.tmp.bed | cut -f6,14 - |  awk -F "/" '{FS="/"}{OFS="\t"}{print $1,$2}' |  awk -F "" '{FS=""}{OFS="\t"}{if( ($1==$6) && ($3!="-") ){print "GOOD"}else{print "FAIL"}}' > $NAME.flag
     #4
+
+    echo "$NAME.tmp $NAME.tmp.bed $NAME.flag"
+
     paste $NAME.tmp $NAME.tmp.bed $NAME.flag | awk '{if($15=="GOOD"){print $0}}' - | cut -f6,14 - |  sort -k2,2 |uniq -c | sed 's/^ \+//g' | sort -k1,1 -n | sed 's/ /\t/g' | awk '{OFS="\t"}{print $3,$2,$1}' | sed -e 's/\t[A-Z]\//_/g' > $NAME.finalVEP.triplets.counts
-    
-    
+
+    echo "This is the head:"
+
+    head $NAME.finalVEP.triplets.counts
+
+    echo "END OF HEAD"
+
     if [ -s "$COUNTS" ]
     then 
             cat $COUNTS > $NAME.finalVEP.triplets.counts
@@ -275,10 +289,10 @@ else
             echo "Using estimated rate parameters for correction"
     fi
     
-            echo "Estimating 7 rate parameters"
-            perl $BASEDIR/scripts/transform192to7.pl $NAME.finalVEP.triplets.counts $BASEDIR/data/final_translate_SSB192toSSB7 | awk -F "\t" '{OFS="\t"}{print $3,1,2,$2}' | sortBed -i stdin | mergeBed -i stdin -c 4 -o sum | awk '{OFS="\t"}{print "Estimated",$1,$4}' | sed 's/_/\//g' > tmp_to_7
-            cp $NAME.finalVEP.triplets.counts $NAME.finalVEP.triplets192.counts
-            mv tmp_to_7 $NAME.finalVEP.triplets.counts
+    echo "Estimating 7 rate parameters"
+    perl $BASEDIR/scripts/transform192to7.pl $NAME.finalVEP.triplets.counts $SUPA/final_translate_SSB192toSSB7 | awk -F "\t" '{OFS="\t"}{print $3,1,2,$2}' | sortBed -i stdin | mergeBed -i stdin -c 4 -o sum | awk '{OFS="\t"}{print "Estimated",$1,$4}' | sed 's/_/\//g' > tmp_to_7
+    cp $NAME.finalVEP.triplets.counts $NAME.finalVEP.triplets192.counts
+    mv tmp_to_7 $NAME.finalVEP.triplets.counts
     
     
     ##Check if triplet counts exist and how many possibilities there were (expected 192 or 7)
@@ -422,7 +436,7 @@ then
 else   
     ### For intronic
     echo "STEP 6:  Calculating dN/dS on target and off target regions"
-    intersectBed -a $BASEDIR/data/transcript_intron_length.bed -b $TMP/$NAME.intronic.bed -wo | mergeBed -i stdin -c 4,5,6,10,11 -o mode,mode,mode,collapse,count | awk '{print $4"\t"$8/($6+1)"\t"$8"\t"$6}' >  $TMP/$NAME.intronic.rate
+    intersectBed -a $SUPA/transcript_intron_length.bed -b $TMP/$NAME.intronic.bed -wo | mergeBed -i stdin -c 4,5,6,10,11 -o mode,mode,mode,collapse,count | awk '{print $4"\t"$8/($6+1)"\t"$8"\t"$6}' >  $TMP/$NAME.intronic.rate
        
     
      #check fot existence of outdir of not create

@@ -1,4 +1,4 @@
-name: SOPRANO (Dev) Tests
+name: SOPRANO Tests (dev)
 
 on:
   pull_request:
@@ -24,6 +24,9 @@ jobs:
           activate-environment: soprano-dev
           environment-file: src/SOPRANO/ci_linux.yml
           use-mamba: true
+      - name: Decompress fasta
+        run: |
+          gunzip data/aux_soprano/ensemble_transcriptID.fasta.gz
       - name: Install SOPRANO
         run: |
           conda activate soprano-dev

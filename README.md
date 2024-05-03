@@ -4,6 +4,8 @@
 
 ***
 
+This can be accessed via the webserver: [soprano-app](https://software.icr.ac.uk/app/soprano)  
+
 [![Main Tests](https://github.com/instituteofcancerresearch/SOPRANO/actions/workflows/main_tests.yml/badge.svg)](https://github.com/instituteofcancerresearch/SOPRANO/actions/workflows/main_tests.yml)
 [![Dev Tests](https://github.com/instituteofcancerresearch/SOPRANO/actions/workflows/dev_tests.yml/badge.svg)](https://github.com/instituteofcancerresearch/SOPRANO/actions/workflows/dev_tests.yml)
 [![Python 3.10|11](https://img.shields.io/badge/Python-3.10_|_3.11-blue.svg)](https://img.shields.io/badge/Python-3.10_|_3.11-blue.svg)

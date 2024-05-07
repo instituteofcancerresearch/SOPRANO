@@ -326,23 +326,43 @@ def with_tab_info(tab: DeltaGenerator):
         st.caption("Selection On PRotein ANnotated regiOns")
         st.markdown(
             "This application is designed to provide a user interface to the "
-            "SOPRANO computational pipeline, without the need of command line "
-            "intervention."
-            "\n\n"
+            "SOPRANO computational pipeline, without the need for the command line.\n\n"                        
             "There are three essential files required to run "
             "SOPRANO. These define the\n"
             "1. Reference genome\n"
             "2. Annotated somatic mutations\n"
             "3. Immunopeptidome\n"
             "\n\n"
-            "These three inputs can be configured in term via the tabs "
+            "These three inputs can be configured in turn via the tabs "
             "indicating steps 1, 2 and 3. Once you have prepared your data, "
             "step 4 will enable you to run the pipeline, subject to "
-            "further runtime configuration choices."
-            "\n\n"
-            "Any technical issues can be raised on [GitHub]"
-            "(https://github.com/instituteofcancerresearch/SOPRANO/issues)"
-        )
+            "further runtime configuration choices.  "                                                        
+        )                    
+        st.divider()
+        st.write("**Citations and Acknowledgements**")
+        st.caption("""
+            Zapata, L., Caravagna, G., Williams, M.J. et al. 
+            Immune selection determines tumor antigenicity and influences response to 
+            checkpoint inhibitors. Nat Genet 55, 451–460 (2023). 
+            [doi.org/10.1038/s41588-023-01313-1](https://doi.org/10.1038/s41588-023-01313-1)
+            """)        
+        #st.caption("""                                      
+        #           Marzouk, K., & Zapata, L. (2024). 
+        #           [SOPRANO Software Pipeline Version 1.0.0](https://github.com/instituteofcancerresearch/SOPRANO) 
+        #           [doi/10.5281/zenodo.11110720](https://zenodo.org/doi/10.5281/zenodo.11110720)
+        #""")                
+        st.caption("""            
+            We acknowledge Kareem Marzouk and the RSE Group at The Institute of Cancer Research for 
+            providing software development of the SOPRANO pipeline and web-app. 
+            [doi/10.5281/zenodo](https://zenodo.org/doi/10.5281/zenodo.10638989). This work is based on the 
+            above publication which includes the original SOPRANO pipeline.
+        """)    
+        st.divider()
+        st.write("**Licence and help**")
+        st.caption("SOPRANO is lincensed under the [GNU General Public License](https://github.com/instituteofcancerresearch/SOPRANO/blob/python/LICENSE)")
+        st.caption("Any technical issues can be raised on [GitHub](https://github.com/instituteofcancerresearch/SOPRANO/issues)")
+        
+        
 
 
 def with_tab_immunopeptidome(tab: DeltaGenerator):

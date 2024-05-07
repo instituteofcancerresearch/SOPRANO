@@ -20,7 +20,7 @@ from SOPRANO.utils.app_utils import (
 )
 from SOPRANO.utils.path_utils import Directories
 
-logo_path = "/".join(__file__.split("/")[:-1] + ['static', 'logo.png'])
+logo_path = "/".join(__file__.split("/")[:-1] + ["static", "logo.png"])
 
 
 def with_tab_pipeline(tab: DeltaGenerator):
@@ -482,7 +482,7 @@ def with_tab_immunopeptidome(tab: DeltaGenerator):
 
 if __name__ == "__main__":
     st.set_page_config(layout="wide")
-    header1 = ""#f'<img src="{logo_path}" alt="icr" width="200px">'    
+    header1 = ""  # f'<img src="{logo_path}" alt="icr" width="200px">'
     header2 = """        
         <span style="color:black;">Institute of Cancer Research - SOPRANO - </span><span style=          
         "color:grey">S</span><span style=
@@ -497,7 +497,7 @@ if __name__ == "__main__":
         "color:grey">O</span><span style=
         "color:darkred">ns</span>
         """
-    st.markdown(header1+header2, unsafe_allow_html=True)
+    st.markdown(header1 + header2, unsafe_allow_html=True)
     (
         welcome_tab,
         genome_tab,

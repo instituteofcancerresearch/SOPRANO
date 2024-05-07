@@ -323,10 +323,10 @@ def with_tab_annotator(tab: DeltaGenerator):
 def with_tab_info(tab: DeltaGenerator):
     with tab:
         st.title("Welcome to SOPRANO! :wave:")
-        st.caption("Selection On PRotein ANnotated regiOns")
+        st.write("##### Selection On PRotein ANnotated regiOns")
         st.markdown(
             "This application is designed to provide a user interface to the "
-            "SOPRANO computational pipeline, without the need for the command line.\n\n"                        
+            "SOPRANO computational pipeline, without the need for the command line.\n\n"
             "There are three essential files required to run "
             "SOPRANO. These define the\n"
             "1. Reference genome\n"
@@ -336,33 +336,44 @@ def with_tab_info(tab: DeltaGenerator):
             "These three inputs can be configured in turn via the tabs "
             "indicating steps 1, 2 and 3. Once you have prepared your data, "
             "step 4 will enable you to run the pipeline, subject to "
-            "further runtime configuration choices.  "                                                        
-        )                    
+            "further runtime configuration choices.  "
+        )
         st.divider()
-        st.write("**Citations and Acknowledgements**")
-        st.caption("""
-            Zapata, L., Caravagna, G., Williams, M.J. et al. 
-            Immune selection determines tumor antigenicity and influences response to 
-            checkpoint inhibitors. Nat Genet 55, 451–460 (2023). 
-            [doi.org/10.1038/s41588-023-01313-1](https://doi.org/10.1038/s41588-023-01313-1)
-            """)        
-        #st.caption("""                                      
-        #           Marzouk, K., & Zapata, L. (2024). 
-        #           [SOPRANO Software Pipeline Version 1.0.0](https://github.com/instituteofcancerresearch/SOPRANO) 
-        #           [doi/10.5281/zenodo.11110720](https://zenodo.org/doi/10.5281/zenodo.11110720)
-        #""")                
-        st.caption("""            
-            We acknowledge Kareem Marzouk and the RSE Group at The Institute of Cancer Research for 
+        st.write(
+            """
+            **Citation and Acknowledgement:**  
+            *If you use this tool, please cite the following publication:*
+            """
+        )
+        st.caption(
+            "Zapata, L., Caravagna, G., Williams, M.J. et al. "
+            "Immune selection determines tumor antigenicity and influences response to "
+            "checkpoint inhibitors. Nat Genet 55, 451–460 (2023). "
+            "[doi.org/10.1038/s41588-023-01313-1](https://doi.org/10.1038/s41588-023-01313-1)"
+        )
+        st.caption(
+            """            
+            *We acknowledge Kareem Marzouk and the RSE Group at The Institute of Cancer Research for 
             providing software development of the SOPRANO pipeline and web-app. 
             [doi/10.5281/zenodo](https://zenodo.org/doi/10.5281/zenodo.10638989). This work is based on the 
-            above publication which includes the original SOPRANO pipeline.
-        """)    
+            above publication which includes the original SOPRANO pipeline.*
+            """
+        )
         st.divider()
         st.write("**Licence and help**")
-        st.caption("SOPRANO is lincensed under the [GNU General Public License](https://github.com/instituteofcancerresearch/SOPRANO/blob/python/LICENSE)")
-        st.caption("Any technical issues can be raised on [GitHub](https://github.com/instituteofcancerresearch/SOPRANO/issues)")
-        
-        
+        st.caption(
+            """
+            SOPRANO is licensed under the [GNU General Public License]
+            (https://github.com/instituteofcancerresearch/SOPRANO/blob/python/LICENSE)
+            """
+        )
+        st.caption(
+            """
+            Any technical issues can be raised [here on 
+            GitHub](https://github.com/instituteofcancerresearch/SOPRANO/issues)
+            """
+        )
+        st.divider()
 
 
 def with_tab_immunopeptidome(tab: DeltaGenerator):

@@ -360,17 +360,17 @@ def with_tab_info(tab: DeltaGenerator):
             """
         )
         st.divider()
-        st.write("**Licence and help**")
+        st.write("**License and help**")
         st.caption(
             """
-            SOPRANO is licensed under the [GNU General Public License]
-            (https://github.com/instituteofcancerresearch/SOPRANO/blob/python/LICENSE)
+            SOPRANO is licensed under the 
+            [GNU General Public License](https://github.com/instituteofcancerresearch/SOPRANO/blob/python/LICENSE)
             """
         )
         st.caption(
             """
-            Any technical issues can be raised [here on 
-            GitHub](https://github.com/instituteofcancerresearch/SOPRANO/issues)
+            Any technical issues can be raised 
+            [here on GitHub](https://github.com/instituteofcancerresearch/SOPRANO/issues)
             """
         )
         st.divider()
@@ -480,6 +480,21 @@ def with_tab_immunopeptidome(tab: DeltaGenerator):
 
 if __name__ == "__main__":
     st.set_page_config(layout="wide")
+    header = """
+        The Institute of Cancer Research - **SOPRANO** - 
+        <span style="color:grey">S</span><span style=
+        "color:yellowgreen">election </span><span style=
+        "color:grey">O</span><span style=
+        "color:gold">n </span><span style=
+        "color:grey">PR</span><span style=
+        "color:orange">otein </span><span style=
+        "color:grey">AN</span><span style=
+        "color:hotpink">notated </span><span style=
+        "color:hotpink">regi</span><span style=
+        "color:grey">O</span><span style=
+        "color:darkred">ns</span>
+        """
+    # st.markdown(header, unsafe_allow_html=True)
     (
         welcome_tab,
         genome_tab,

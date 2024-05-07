@@ -482,9 +482,10 @@ def with_tab_immunopeptidome(tab: DeltaGenerator):
 
 if __name__ == "__main__":
     st.set_page_config(layout="wide")
-    header1 = ""  # f'<img src="{logo_path}" alt="icr" width="200px">'
-    header2 = """        
-        <span style="color:black;">Institute of Cancer Research - SOPRANO - </span><span style=          
+    header = """                
+        <span style="color:black;">
+        <img src="https://www.icr.ac.uk/assets/img/logo.png" 
+        alt="icr" width="200px"> - SOPRANO - </span><span style=          
         "color:grey">S</span><span style=
         "color:yellowgreen">election </span><span style=
         "color:grey">O</span><span style=
@@ -497,7 +498,7 @@ if __name__ == "__main__":
         "color:grey">O</span><span style=
         "color:darkred">ns</span>
         """
-    st.markdown(header1 + header2, unsafe_allow_html=True)
+    st.markdown(header, unsafe_allow_html=True)
     (
         welcome_tab,
         genome_tab,

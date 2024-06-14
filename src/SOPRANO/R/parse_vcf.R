@@ -1,5 +1,7 @@
 library(magrittr)
 
+paste("parse_vcf.R")
+
 # Define parser
 opt_parser <- optparse::OptionParser()
 
@@ -40,6 +42,7 @@ opt_parser <- optparse::add_option(
   metavar = "character"
 )
 
+paste("Parse inputs...")
 # Parse inputs
 args <- optparse::parse_args(opt_parser)
 vcf_file_path <- args$vcf
@@ -47,7 +50,9 @@ output_path <- args$output
 translator_dir <- args$translate
 assembly_type <- args$assembly
 workdir <- args$workdir
+paste("Working dir",workdir)
 
+paste("Check inputs...")
 # Check inputs
 source(file.path(workdir, "check_args.R"))
 source(file.path(workdir, "vcf_gymnastics.R"))
@@ -63,6 +68,7 @@ check_auxiliary_paths(
   "RefCDS_human_GRCh38_GencodeV18_recommended.rda"
 )
 
+paste("Load aux data...")
 # Load auxiliary data
 ensp2enst_data <- readr::read_delim(
   file.path(translator_dir, "ENSP2ENST.txt"),
@@ -89,6 +95,7 @@ if (is.null(output_path)) {
   output_path <- file.path(dir_name, file_name)
 }
 
+paste("Main functions")
 bialleilic_indels_extracted <- extract_biallelic_indels(vcf_file_path)
 
 gt_tidied <- extract_gt_tidy(bialleilic_indels_extracted)

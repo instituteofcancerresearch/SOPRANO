@@ -296,6 +296,15 @@ def parse_vcf_sources(argv=None):
         help="Provide the genome assembly associated with the VCF sources.",
         default="GRCh38",
     )
+    
+    parser.add_argument(
+        "--skip_missing",
+        "-k",
+        dest="skip_missing",
+        type=bool,
+        help="Skip any individual missing results.",
+        default=False,
+    )
 
     return parser.parse_args(argv)
 

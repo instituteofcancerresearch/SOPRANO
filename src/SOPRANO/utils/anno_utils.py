@@ -92,7 +92,9 @@ def annotate_source(
             )
 
     print("Annotating with Rscript...")
-    print(f"Rscript {_VCF_PARSER_R_PATH.as_posix()} -v {source_path.as_posix()} -t {Directories.annotation_aux_files().as_posix()} -a {assembly} -w {_RSCRIPTS_DIR.as_posix()} -o {target_paths[0].as_posix()}")                
+    print(
+        f"Rscript {_VCF_PARSER_R_PATH.as_posix()} -v {source_path.as_posix()} -t {Directories.annotation_aux_files().as_posix()} -a {assembly} -w {_RSCRIPTS_DIR.as_posix()} -o {target_paths[0].as_posix()}"
+    )
     for source, target in zip(vcf_paths, target_paths):
         subprocess.run(
             [
@@ -112,24 +114,23 @@ def annotate_source(
             capture_output=True,
         )
 
-    
-    output_path = cache_directory / f"{output_name}.vcf.anno"    
+    output_path = cache_directory / f"{output_name}.vcf.anno"
     exists = output_path.exists()
-    print(f"Output path: {output_path}",exists)
-                    
-    if single_annotation:          
-        if skip_missing and not exists:  
+    print(f"Output path: {output_path}", exists)
+
+    if single_annotation:
+        if skip_missing and not exists:
             print("Exitting with no data due to skip_missing flag")
             return []
         target_paths[0].rename(output_path)
-    else:            
+    else:
         print(f"-- building merged file: {output_path}")
         with open(output_path, "w") as merged_file:
             for written_path in target_paths:
-                exists = written_path.exists()                
-                print(f"-> merging {written_path}",exists)
+                exists = written_path.exists()
+                print(f"-> merging {written_path}", exists)
                 if skip_missing and not exists:
-                    print("Skipping missing file",written_path)
+                    print("Skipping missing file", written_path)
                 else:
                     with open(written_path, "r") as g:
                         lines = g.readlines()
@@ -143,5 +144,5 @@ def annotate_source(
         all_output_paths = target_paths + [output_path]
     else:
         all_output_paths = [output_path]
-    
+
     return all_output_paths

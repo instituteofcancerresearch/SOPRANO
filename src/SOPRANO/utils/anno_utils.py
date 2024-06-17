@@ -106,14 +106,14 @@ def annotate_source(
         os.remove(output_path)
 
     print("-----------------\nAnnotating with Rscript...")
-    
+
     for source, target in zip(vcf_paths, target_paths):
         print("-----------------")
         print(
-        f"Rscript {_VCF_PARSER_R_PATH.as_posix()} -v {source.as_posix()} -t {Directories.annotation_aux_files().as_posix()} -a {assembly} -w {_RSCRIPTS_DIR.as_posix()} -o {target.as_posix()}"
+            f"Rscript {_VCF_PARSER_R_PATH.as_posix()} -v {source.as_posix()} -t {Directories.annotation_aux_files().as_posix()} -a {assembly} -w {_RSCRIPTS_DIR.as_posix()} -o {target.as_posix()}"
         )
         print("-----------------")
-        
+
         shell_cmd = [
             "Rscript",
             _VCF_PARSER_R_PATH.as_posix(),
@@ -164,19 +164,19 @@ def annotate_source(
         print(f"-- building merged file: {output_path}")
         with open(output_path, "w") as merged_file:
             for written_path in target_paths:
-                exists = written_path.exists()                
+                exists = written_path.exists()
                 print(f"-> merging {written_path}", exists)
                 if bskip_missing and not exists:
-                    print("-------- Skipping missing file")                    
-                else:                                        
+                    print("-------- Skipping missing file")
+                else:
                     with open(written_path, "r") as g:
-                            lines = g.readlines()
+                        lines = g.readlines()
 
                     if written_path != target_paths[-1]:
                         lines[-1] += "\n"
 
                     merged_file.writelines(lines)
-                    print("-------- Success" )
+                    print("-------- Success")
 
     if len(vcf_paths) > 1:
         all_output_paths = target_paths + [output_path]

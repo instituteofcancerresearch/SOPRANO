@@ -42,6 +42,14 @@ opt_parser <- optparse::add_option(
   metavar = "character"
 )
 
+# Working directory
+opt_parser <- optparse::add_option(
+  opt_parser, c("-r", "--replace_existing"),
+  type = "character", default = "N",
+  help = "Delete annotation files and recreate",
+  metavar = "character"
+)
+
 paste("Parse inputs...")
 # Parse inputs
 args <- optparse::parse_args(opt_parser)
@@ -51,13 +59,17 @@ translator_dir <- args$translate
 assembly_type <- args$assembly
 workdir <- args$workdir
 paste("Working dir",workdir)
+replace_existing <- args$replace_existing
+paste("Replace existing?",replace_existing)
 
 paste("Check inputs...")
 # Check inputs
 source(file.path(workdir, "check_args.R"))
 source(file.path(workdir, "vcf_gymnastics.R"))
 check_vcf_path(vcf_file_path)
-check_output_path(output_path)
+if (replace_existing != "Y"){
+  check_output_path(output_path)
+}
 check_translator_dir(translator_dir)
 check_assembly_type(assembly_type)
 check_auxiliary_paths(

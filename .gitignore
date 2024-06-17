@@ -107,3 +107,4 @@ snvs/PPCG0002a_DNA_vs_PPCG0002b_DNA.filtered.extended.pon.vcf.gz
 snvs/IBD002_platypus_omit024_filtered_vep.IBD002_012E.vcf
 pp_evo/hla0201_b/pipeline.params
 pp_evo/hla0201_a/pipeline.params
+data/test_data/*

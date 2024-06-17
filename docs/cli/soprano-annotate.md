@@ -33,3 +33,9 @@ will field is required.
 
 :   Provide a genome assembly that is compatible with the input VCF source
 files. By default, this assumed to be GRCh38.
+
+`-k | --keep_missing`
+
+:   (N/Y) Choose to continue if there is a file that doesn't work in a large batch rather 
+than failing all. Default is N, to fail.
+

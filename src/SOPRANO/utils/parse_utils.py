@@ -301,9 +301,18 @@ def parse_vcf_sources(argv=None):
         "--skip_missing",
         "-k",
         dest="skip_missing",
-        type=bool,
+        type=str,
         help="Skip any individual missing results.",
-        default=False,
+        default="N",
+    )
+    
+    parser.add_argument(
+        "--replace_existing",
+        "-r",
+        dest="replace_existing",
+        type=str,
+        help="Replace the annotation file if it already exists.",
+        default="N",
     )
 
     return parser.parse_args(argv)

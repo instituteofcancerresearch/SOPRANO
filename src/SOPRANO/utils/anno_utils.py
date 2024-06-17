@@ -1,5 +1,6 @@
 import subprocess
 from pathlib import Path
+import os
 
 from SOPRANO.utils.path_utils import Directories
 
@@ -71,10 +72,14 @@ def annotate_source(
     assembly: str,
     output_name: str | None = None,
     cache_directory: Path = Directories.app_annotated_inputs(),
-    skip_missing: bool = False,
+    skip_missing: str = "N",
+    replace_existing: str = "N",
 ):
     print("------------- Annotating source -------------")
     vcf_paths = find_vcf_files(source_path)
+    
+    bskip_missing = skip_missing.upper()=="Y"
+    breplace_existing = replace_existing.upper()=="Y"
 
     single_annotation = len(vcf_paths) == 1
 
@@ -90,14 +95,22 @@ def annotate_source(
             raise ValueError(
                 "Output name must be defined for multiple VCF sources."
             )
-
+            
+        
+    output_path = cache_directory / f"{output_name}.vcf.anno"
+    exists = output_path.exists()
+    print(f"Output path: {output_path}", exists)    
+    if breplace_existing and exists:
+        print("Chosen to overwrite the existing annotation, so deleting it before starting the annotation process")
+        os.remove(output_path)
+        
+                    
     print("Annotating with Rscript...")
     print(
         f"Rscript {_VCF_PARSER_R_PATH.as_posix()} -v {source_path.as_posix()} -t {Directories.annotation_aux_files().as_posix()} -a {assembly} -w {_RSCRIPTS_DIR.as_posix()} -o {target_paths[0].as_posix()}"
     )
     for source, target in zip(vcf_paths, target_paths):
-        subprocess.run(
-            [
+        shell_cmd =  [
                 "Rscript",
                 _VCF_PARSER_R_PATH.as_posix(),
                 "-v",
@@ -110,17 +123,38 @@ def annotate_source(
                 _RSCRIPTS_DIR.as_posix(),
                 "-o",
                 target.as_posix(),
-            ],
-            capture_output=True,
-        )
-
+                "-r",
+                replace_existing.upper(),
+            ]
+                                            
+        process = subprocess.Popen(shell_cmd,
+                     stdout = subprocess.PIPE, 
+                     stderr = subprocess.PIPE,                     
+                     shell = False
+                     )
+        std_out, std_err = process.communicate()
+        out_msg = std_out.decode("utf-8")
+        err_msg = std_err.decode("utf-8")        
+        
+        
+        if err_msg != "":
+            print("The R script parse_vcf.R threw an error")
+            print("RScript error:")
+            print(err_msg)
+            
+            print("The entire output, fyi:")
+            print(out_msg)
+        
+            
+            
+                
     output_path = cache_directory / f"{output_name}.vcf.anno"
     exists = output_path.exists()
     print(f"Output path: {output_path}", exists)
 
     if single_annotation:
-        if skip_missing and not exists:
-            print("Exitting with no data due to skip_missing flag")
+        if bskip_missing and not exists:
+            print("Exiting with no data due to skip_missing flag")
             return []
         target_paths[0].rename(output_path)
     else:
@@ -129,7 +163,7 @@ def annotate_source(
             for written_path in target_paths:
                 exists = written_path.exists()
                 print(f"-> merging {written_path}", exists)
-                if skip_missing and not exists:
+                if bskip_missing and not exists:
                     print("Skipping missing file", written_path)
                 else:
                     with open(written_path, "r") as g:

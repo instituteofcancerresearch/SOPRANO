@@ -302,7 +302,9 @@ def with_tab_annotator(tab: DeltaGenerator):
         )
 
         name_selection = st.text_input(
-            "Choose a name for the annotated output:"
+            "Choose a name for the annotated output*:",
+            "your_choice_here",
+            help="This is an essential filed and will name the output file"
         )
 
         name_ready, name_processed = AnnotatorUIProcessing.output_name(

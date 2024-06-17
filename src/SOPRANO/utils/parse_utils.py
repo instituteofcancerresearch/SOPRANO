@@ -305,7 +305,7 @@ def parse_vcf_sources(argv=None):
         help="Skip any individual missing results.",
         default="N",
     )
-    
+
     parser.add_argument(
         "--replace_existing",
         "-r",

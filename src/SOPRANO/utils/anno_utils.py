@@ -98,18 +98,22 @@ def annotate_source(
 
     output_path = cache_directory / f"{output_name}.vcf.anno"
     exists = output_path.exists()
-    print(f"Output path: {output_path}", exists)
+    print(f"Aggregated output path: {output_path}", exists)
     if breplace_existing and exists:
         print(
             "Chosen to overwrite the existing annotation, so deleting it before starting the annotation process"
         )
         os.remove(output_path)
 
-    print("Annotating with Rscript...")
-    print(
-        f"Rscript {_VCF_PARSER_R_PATH.as_posix()} -v {source_path.as_posix()} -t {Directories.annotation_aux_files().as_posix()} -a {assembly} -w {_RSCRIPTS_DIR.as_posix()} -o {target_paths[0].as_posix()}"
-    )
+    print("-----------------\nAnnotating with Rscript...")
+    
     for source, target in zip(vcf_paths, target_paths):
+        print("-----------------")
+        print(
+        f"Rscript {_VCF_PARSER_R_PATH.as_posix()} -v {source.as_posix()} -t {Directories.annotation_aux_files().as_posix()} -a {assembly} -w {_RSCRIPTS_DIR.as_posix()} -o {target.as_posix()}"
+        )
+        print("-----------------")
+        
         shell_cmd = [
             "Rscript",
             _VCF_PARSER_R_PATH.as_posix(),
@@ -144,6 +148,7 @@ def annotate_source(
 
             print("The entire output, fyi:")
             print(out_msg)
+            print("!!!!!! error !!!!!!")
 
     output_path = cache_directory / f"{output_name}.vcf.anno"
     exists = output_path.exists()
@@ -155,21 +160,23 @@ def annotate_source(
             return []
         target_paths[0].rename(output_path)
     else:
+        print("--------------------------------------------------")
         print(f"-- building merged file: {output_path}")
         with open(output_path, "w") as merged_file:
             for written_path in target_paths:
-                exists = written_path.exists()
+                exists = written_path.exists()                
                 print(f"-> merging {written_path}", exists)
                 if bskip_missing and not exists:
-                    print("Skipping missing file", written_path)
-                else:
+                    print("-------- Skipping missing file")                    
+                else:                                        
                     with open(written_path, "r") as g:
-                        lines = g.readlines()
+                            lines = g.readlines()
 
                     if written_path != target_paths[-1]:
                         lines[-1] += "\n"
 
                     merged_file.writelines(lines)
+                    print("-------- Success" )
 
     if len(vcf_paths) > 1:
         all_output_paths = target_paths + [output_path]

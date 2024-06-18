@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Marzouk"
+  given-names: "Kareem"
+  orcid: "https://orcid.org/0000-0003-2060-8956"
+- family-names: "Zapata"
+  given-names: "Luis"
+  orcid: "https://orcid.org/0000-0002-1386-2019"
+title: "SOPRANO: Selection On PRotein Annotated regiOns, computational pipeline and web-app"
+version: 1.0.0
+doi: 10.5281/zenodo.1234
+date-released: 2024-03-01
+url: "https://github.com/instituteofcancerresearch/SOPRANO"
+References:
+- Zapata, L., Caravagna, G., Williams, M.J. et al. Immune selection determines tumor antigenicity and influences response to checkpoint inhibitors. Nat Genet 55, 451–460 (2023). https://doi.org/10.1038/s41588-023-01313-1

@@ -20,6 +20,8 @@ from SOPRANO.utils.app_utils import (
 )
 from SOPRANO.utils.path_utils import Directories
 
+logo_path = "/".join(__file__.split("/")[:-1] + ["static", "logo.png"])
+
 
 def with_tab_pipeline(tab: DeltaGenerator):
     with tab:
@@ -323,26 +325,57 @@ def with_tab_annotator(tab: DeltaGenerator):
 def with_tab_info(tab: DeltaGenerator):
     with tab:
         st.title("Welcome to SOPRANO! :wave:")
-        st.caption("Selection On PRotein ANnotated regiOns")
+        st.write("##### Selection On PRotein ANnotated regiOns")
         st.markdown(
             "This application is designed to provide a user interface to the "
-            "SOPRANO computational pipeline, without the need of command line "
-            "intervention."
-            "\n\n"
+            "SOPRANO computational pipeline, without the need for the command line.\n\n"
             "There are three essential files required to run "
             "SOPRANO. These define the\n"
             "1. Reference genome\n"
             "2. Annotated somatic mutations\n"
             "3. Immunopeptidome\n"
             "\n\n"
-            "These three inputs can be configured in term via the tabs "
+            "These three inputs can be configured in turn via the tabs "
             "indicating steps 1, 2 and 3. Once you have prepared your data, "
             "step 4 will enable you to run the pipeline, subject to "
-            "further runtime configuration choices."
-            "\n\n"
-            "Any technical issues can be raised on [GitHub]"
-            "(https://github.com/instituteofcancerresearch/SOPRANO/issues)"
+            "further runtime configuration choices.  "
         )
+        st.divider()
+        st.write(
+            """
+            **Citation and Acknowledgement:**  
+            *If you use this tool, please cite the following publication:*
+            """
+        )
+        st.caption(
+            "Zapata, L., Caravagna, G., Williams, M.J. et al. "
+            "Immune selection determines tumor antigenicity and influences response to "
+            "checkpoint inhibitors. Nat Genet 55, 451–460 (2023). "
+            "[doi.org/10.1038/s41588-023-01313-1](https://doi.org/10.1038/s41588-023-01313-1)"
+        )
+        st.caption(
+            """            
+            *We acknowledge Kareem Marzouk and the RSE Group at The Institute of Cancer Research for 
+            providing software development of the SOPRANO pipeline and web-app. 
+            [doi/10.5281/zenodo](https://zenodo.org/doi/10.5281/zenodo.10638989). This work is based on the 
+            above publication which includes the original SOPRANO pipeline.*
+            """
+        )
+        st.divider()
+        st.write("**License and help**")
+        st.caption(
+            """
+            SOPRANO is licensed under the 
+            [GNU General Public License](https://github.com/instituteofcancerresearch/SOPRANO/blob/python/LICENSE)
+            """
+        )
+        st.caption(
+            """
+            Any technical issues can be raised 
+            [here on GitHub](https://github.com/instituteofcancerresearch/SOPRANO/issues)
+            """
+        )
+        st.divider()
 
 
 def with_tab_immunopeptidome(tab: DeltaGenerator):
@@ -449,6 +482,23 @@ def with_tab_immunopeptidome(tab: DeltaGenerator):
 
 if __name__ == "__main__":
     st.set_page_config(layout="wide")
+    header = """                
+        <span style="color:black;">
+        <img src="https://www.icr.ac.uk/assets/img/logo.png" 
+        alt="icr" width="200px"> - SOPRANO - </span><span style=          
+        "color:grey">S</span><span style=
+        "color:yellowgreen">election </span><span style=
+        "color:grey">O</span><span style=
+        "color:gold">n </span><span style=
+        "color:grey">PR</span><span style=
+        "color:orange">otein </span><span style=
+        "color:grey">AN</span><span style=
+        "color:hotpink">notated </span><span style=
+        "color:hotpink">regi</span><span style=
+        "color:grey">O</span><span style=
+        "color:darkred">ns</span>
+        """
+    st.markdown(header, unsafe_allow_html=True)
     (
         welcome_tab,
         genome_tab,

@@ -594,7 +594,7 @@ def run_pipeline(params: Parameters):
     jobs.append(CheckTargetMutations())
     jobs.append(ComputeIntronRate())
     jobs.append(ComputeStatistics())
-    jobs.append(TidyUp())
+    #jobs.append(TidyUp())
 
     for job in jobs:
         job.apply(params)

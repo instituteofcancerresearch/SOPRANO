@@ -146,9 +146,9 @@ def annotate_source(
             print("RScript error:")
             print(err_msg)
 
-            print("The entire output, fyi:")
-            print(out_msg)
-            print("!!!!!! error !!!!!!")
+            #print("The entire output, fyi:")
+            #print(out_msg)
+            #print("! error !")
 
     output_path = cache_directory / f"{output_name}.vcf.anno"
     exists = output_path.exists()

@@ -89,6 +89,8 @@ def annotate_vcfs():
         output_name=args.output_name,
         cache_directory=args.cache_dir,
         assembly=args.assembly,
+        skip_missing=args.skip_missing,
+        replace_existing=args.replace_existing,
     )
 
 

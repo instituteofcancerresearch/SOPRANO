@@ -1,5 +1,6 @@
 import subprocess
 from pathlib import Path
+import os
 
 from SOPRANO.utils.path_utils import Directories
 
@@ -71,8 +72,14 @@ def annotate_source(
     assembly: str,
     output_name: str | None = None,
     cache_directory: Path = Directories.app_annotated_inputs(),
+    skip_missing: str = "N",
+    replace_existing: str = "N",
 ):
+    print("------------- Annotating source -------------")
     vcf_paths = find_vcf_files(source_path)
+
+    bskip_missing = skip_missing.upper() == "Y"
+    breplace_existing = replace_existing.upper() == "Y"
 
     single_annotation = len(vcf_paths) == 1
 
@@ -89,42 +96,87 @@ def annotate_source(
                 "Output name must be defined for multiple VCF sources."
             )
 
-    for source, target in zip(vcf_paths, target_paths):
-        subprocess.run(
-            [
-                "Rscript",
-                _VCF_PARSER_R_PATH.as_posix(),
-                "-v",
-                source.as_posix(),
-                "-t",
-                Directories.annotation_aux_files().as_posix(),
-                "-a",
-                assembly,
-                "-w",
-                _RSCRIPTS_DIR.as_posix(),
-                "-o",
-                target.as_posix(),
-            ],
-            capture_output=True,
+    output_path = cache_directory / f"{output_name}.vcf.anno"
+    exists = output_path.exists()
+    print(f"Aggregated output path: {output_path}", exists)
+    if breplace_existing and exists:
+        print(
+            "Chosen to overwrite the existing annotation, so deleting it before starting the annotation process"
         )
+        os.remove(output_path)
+
+    print("-----------------\nAnnotating with Rscript...")
+
+    for source, target in zip(vcf_paths, target_paths):
+        print("-----------------")
+        print(
+            f"Rscript {_VCF_PARSER_R_PATH.as_posix()} -v {source.as_posix()} -t {Directories.annotation_aux_files().as_posix()} -a {assembly} -w {_RSCRIPTS_DIR.as_posix()} -o {target.as_posix()}"
+        )
+        print("-----------------")
+
+        shell_cmd = [
+            "Rscript",
+            _VCF_PARSER_R_PATH.as_posix(),
+            "-v",
+            source.as_posix(),
+            "-t",
+            Directories.annotation_aux_files().as_posix(),
+            "-a",
+            assembly,
+            "-w",
+            _RSCRIPTS_DIR.as_posix(),
+            "-o",
+            target.as_posix(),
+            "-r",
+            replace_existing.upper(),
+        ]
+
+        process = subprocess.Popen(
+            shell_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=False,
+        )
+        std_out, std_err = process.communicate()
+        out_msg = std_out.decode("utf-8")
+        err_msg = std_err.decode("utf-8")
+
+        if err_msg != "":
+            print("The R script parse_vcf.R threw an error")
+            print("RScript error:")
+            print(err_msg)
+
+            #print("The entire output, fyi:")
+            #print(out_msg)
+            #print("! error !")
 
     output_path = cache_directory / f"{output_name}.vcf.anno"
+    exists = output_path.exists()
+    print(f"Output path: {output_path}", exists)
 
     if single_annotation:
+        if bskip_missing and not exists:
+            print("Exiting with no data due to skip_missing flag")
+            return []
         target_paths[0].rename(output_path)
     else:
+        print("--------------------------------------------------")
         print(f"-- building merged file: {output_path}")
-
         with open(output_path, "w") as merged_file:
             for written_path in target_paths:
-                print(f"-> merging {written_path}")
-                with open(written_path, "r") as g:
-                    lines = g.readlines()
+                exists = written_path.exists()
+                print(f"-> merging {written_path}", exists)
+                if bskip_missing and not exists:
+                    print("-------- Skipping missing file")
+                else:
+                    with open(written_path, "r") as g:
+                        lines = g.readlines()
 
-                if written_path != target_paths[-1]:
-                    lines[-1] += "\n"
+                    if written_path != target_paths[-1]:
+                        lines[-1] += "\n"
 
-                merged_file.writelines(lines)
+                    merged_file.writelines(lines)
+                    print("-------- Success")
 
     if len(vcf_paths) > 1:
         all_output_paths = target_paths + [output_path]

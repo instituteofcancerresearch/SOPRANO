@@ -12,6 +12,7 @@ from streamlit.runtime.uploaded_file_manager import UploadedFile
 from SOPRANO.core.objects import EnsemblData, Parameters
 from SOPRANO.hla2ip import immunopeptidome_from_hla
 from SOPRANO.pipeline import run_pipeline
+from SOPRANO.pipeline import TidyUp
 from SOPRANO.utils import anno_utils
 from SOPRANO.utils.parse_utils import fix_species_arg
 from SOPRANO.utils.path_utils import Directories
@@ -640,8 +641,10 @@ class RunTab:
             output = st.empty()
             with st_capture(output.code):
                 run_pipeline(params)
-            t_end = time()
-
+                print("Tidying files...")
+        TidyUp()
+        t_end = time()        
+        
         running_msg.empty()
 
         data_frame = pd.read_csv(params.results_path, sep="\t")
@@ -702,34 +705,38 @@ class RunTab:
             "Annotation in progress ... please wait until this "
             "process has finished."
         )
-        all_annotated_paths = anno_utils.annotate_source(
-            source_path=source_path,
-            output_name=None if output_name == "" else output_name,
-            cache_directory=Directories.app_annotated_inputs(),
-            assembly=assembly,
-        )
+        
+        output = st.empty()
+        with st_capture(output.code):                                                
+            all_annotated_paths = anno_utils.annotate_source(
+                source_path=source_path,
+                output_name=None if output_name == "" else output_name,
+                cache_directory=Directories.app_annotated_inputs(),
+                assembly=assembly,
+                skip_missing="Y",
+            )
 
-        running_msg.empty()
+            running_msg.empty()
 
-        n_header_lines = 5
+            n_header_lines = 5
 
-        for path in all_annotated_paths:
-            if path.exists():
-                st.success(f"Successful annotation: {path}")
+            for path in all_annotated_paths:
+                if path.exists():
+                    st.success(f"Successful annotation: {path}")
 
-                head_lines = pd.read_csv(
-                    path, delimiter="\t", header=None
-                ).head(n_header_lines)
+                    head_lines = pd.read_csv(
+                        path, delimiter="\t", header=None
+                    ).head(n_header_lines)
 
-                st.dataframe(head_lines)
+                    st.dataframe(head_lines)
 
-                with open(path, "r") as f:
-                    st.download_button(
-                        "Download Full Annotation", f, file_name=path.name
-                    )
+                    with open(path, "r") as f:
+                        st.download_button(
+                            "Download Full Annotation", f, file_name=path.name
+                        )
 
-            else:
-                st.error(f"Failed annotation: {path}")
+                else:
+                    st.error(f"Failed annotation: {path}")
 
     @staticmethod
     def immunopeptidome(

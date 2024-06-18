@@ -1,5 +1,7 @@
 library(magrittr)
 
+paste("parse_vcf.R")
+
 # Define parser
 opt_parser <- optparse::OptionParser()
 
@@ -40,6 +42,15 @@ opt_parser <- optparse::add_option(
   metavar = "character"
 )
 
+# Working directory
+opt_parser <- optparse::add_option(
+  opt_parser, c("-r", "--replace_existing"),
+  type = "character", default = "N",
+  help = "Delete annotation files and recreate",
+  metavar = "character"
+)
+
+paste("Parse inputs...")
 # Parse inputs
 args <- optparse::parse_args(opt_parser)
 vcf_file_path <- args$vcf
@@ -47,12 +58,18 @@ output_path <- args$output
 translator_dir <- args$translate
 assembly_type <- args$assembly
 workdir <- args$workdir
+paste("Working dir",workdir)
+replace_existing <- args$replace_existing
+paste("Replace existing?",replace_existing)
 
+paste("Check inputs...")
 # Check inputs
 source(file.path(workdir, "check_args.R"))
 source(file.path(workdir, "vcf_gymnastics.R"))
 check_vcf_path(vcf_file_path)
-check_output_path(output_path)
+if (replace_existing != "Y"){
+  check_output_path(output_path)
+}
 check_translator_dir(translator_dir)
 check_assembly_type(assembly_type)
 check_auxiliary_paths(
@@ -63,6 +80,7 @@ check_auxiliary_paths(
   "RefCDS_human_GRCh38_GencodeV18_recommended.rda"
 )
 
+paste("Load aux data...")
 # Load auxiliary data
 ensp2enst_data <- readr::read_delim(
   file.path(translator_dir, "ENSP2ENST.txt"),
@@ -89,6 +107,7 @@ if (is.null(output_path)) {
   output_path <- file.path(dir_name, file_name)
 }
 
+paste("Main functions")
 bialleilic_indels_extracted <- extract_biallelic_indels(vcf_file_path)
 
 gt_tidied <- extract_gt_tidy(bialleilic_indels_extracted)

@@ -117,7 +117,7 @@ def immunopeptidome_from_hla(
     if len(hla_alleles) > 0:
         joined_alleles = join_hla_alleles(*hla_alleles)
 
-        print(f"XXX Filtering by alleles: {joined_alleles}")
+        print(f"Filtering by alleles: {joined_alleles}")
 
         pipe(
             ["grep", "-w", "-e", joined_alleles, use_input.as_posix()],

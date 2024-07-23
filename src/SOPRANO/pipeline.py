@@ -556,7 +556,8 @@ class TidyUp(_PipelineComponent):
         tar_and_compress(params)
 
 
-def run_pipeline(params: Parameters):
+def run_pipeline(params: Parameters, tidy=True):
+    print("Running pipeline")
     jobs: List[_PipelineComponent] = [FilterTranscripts()]
 
     if params.use_random_regions:
@@ -594,7 +595,8 @@ def run_pipeline(params: Parameters):
     jobs.append(CheckTargetMutations())
     jobs.append(ComputeIntronRate())
     jobs.append(ComputeStatistics())
-    #jobs.append(TidyUp())
+    if tidy:
+        jobs.append(TidyUp())
 
     for job in jobs:
         job.apply(params)

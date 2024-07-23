@@ -4,6 +4,7 @@ import pathlib
 # Repo and source roots
 _SOPRANO_SRC = pathlib.Path(__file__).parent.parent
 _SOPRANO_REPO = _SOPRANO_SRC.parent.parent
+print("SOPRANO repo =",_SOPRANO_SRC)
 
 # Source directories
 _SOPRANO_SCRIPTS = _SOPRANO_SRC / "scripts"

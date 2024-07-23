@@ -76,6 +76,12 @@ def annotate_source(
     replace_existing: str = "N",
 ):
     print("------------- Annotating source -------------")
+    print(f"Source path: {source_path}")
+    print(f"Assembly: {assembly}")
+    print(f"Output name: {output_name}")
+    print(f"Cache directory: {cache_directory}")
+    print(f"Skip missing: {skip_missing}")
+    print(f"Replace existing: {replace_existing}")
     vcf_paths = find_vcf_files(source_path)
 
     bskip_missing = skip_missing.upper() == "Y"

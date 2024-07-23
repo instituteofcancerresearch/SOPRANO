@@ -636,11 +636,11 @@ class RunTab:
 
         params.cache_dir.mkdir(exist_ok=True)
         output = st.empty()
-        with st_capture(output.code):
+        with st_capture(output.code):            
             t_start = time()
             output = st.empty()
             with st_capture(output.code):
-                run_pipeline(params)
+                run_pipeline(params,tidy=False)
                 print("Tidying files...")
         TidyUp()
         t_end = time()        
@@ -705,7 +705,7 @@ class RunTab:
             "Annotation in progress ... please wait until this "
             "process has finished."
         )
-        
+                
         output = st.empty()
         with st_capture(output.code):                                                
             all_annotated_paths = anno_utils.annotate_source(
@@ -714,6 +714,7 @@ class RunTab:
                 cache_directory=Directories.app_annotated_inputs(),
                 assembly=assembly,
                 skip_missing="Y",
+                replace_existing="Y",
             )
 
             running_msg.empty()

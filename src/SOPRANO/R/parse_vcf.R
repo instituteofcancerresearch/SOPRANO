@@ -1,4 +1,5 @@
 library(magrittr)
+library(dplyr)
 
 paste("parse_vcf.R")
 

@@ -282,7 +282,7 @@ class Parameters(AnalysisPaths):
 
     def log(self, msg: str) -> None:
         self.logger.info(msg)
-
+        
 
 class GlobalParameters:
     def __init__(
@@ -299,6 +299,7 @@ class GlobalParameters:
         genomes: GenomePaths,
         n_samples: int,
     ):
+        print("Global params")
         # Sanitized
         self.job_cache = check_cache_path(job_cache, analysis_name)
         self.seed = GlobalParameters.check_seed(seed)
@@ -389,7 +390,7 @@ class GlobalParameters:
         sample_results_paths = [
             self.get_sample(idx).results_path for idx in range(self.n_samples)
         ]
-
+                
         for expected_results_path in sample_results_paths:
             if not expected_results_path.exists():
                 warnings.warn(
@@ -401,35 +402,37 @@ class GlobalParameters:
                 sample_results_paths.remove(expected_results_path)
 
         if len(sample_results_paths) == 0:
-            raise ValueError(f"No sample results found for {self.job_cache}.")
+            print("Expected results paths:",sample_results_paths)
+            #raise ValueError(f"No sample results found for {self.job_cache}.")        
+            print(f"No sample results found for {self.job_cache}.")        
+        else:
+            joined_df: pd.DataFrame | None = None
 
-        joined_df: pd.DataFrame | None = None
+            with open(self.samples_meta_path, "w") as f:
+                for path in sample_results_paths:
+                    if joined_df is None:
+                        joined_df = pd.read_csv(path, sep="\t")
+                    else:
+                        joined_df = pd.concat(
+                            [joined_df, pd.read_csv(path, sep="\t")],
+                            ignore_index=True,
+                        )
 
-        with open(self.samples_meta_path, "w") as f:
-            for path in sample_results_paths:
-                if joined_df is None:
-                    joined_df = pd.read_csv(path, sep="\t")
-                else:
-                    joined_df = pd.concat(
-                        [joined_df, pd.read_csv(path, sep="\t")],
-                        ignore_index=True,
-                    )
+                    f.write(f"{path.as_posix()}\n")
 
-                f.write(f"{path.as_posix()}\n")
+            # Dropped estimateed statistics... don't mean much in this context
+            joined_df.drop(
+                columns=[
+                    "ON_Low_CI",
+                    "ON_High_CI",
+                    "OFF_Low_CI",
+                    "OFF_High_CI",
+                    "Pvalue",
+                ]
+            )
 
-        # Dropped estimateed statistics... don't mean much in this context
-        joined_df.drop(
-            columns=[
-                "ON_Low_CI",
-                "ON_High_CI",
-                "OFF_Low_CI",
-                "OFF_High_CI",
-                "Pvalue",
-            ]
-        )
-
-        joined_df.to_csv(self.samples_path)
-        self.plot_hist()
+            joined_df.to_csv(self.samples_path)
+            self.plot_hist()
 
     @staticmethod
     def split_joined_df(

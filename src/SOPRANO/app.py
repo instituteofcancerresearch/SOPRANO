@@ -261,6 +261,7 @@ def with_tab_annotator(tab: DeltaGenerator):
         vcf_definition_method_selection = st.radio(
             "Method for defining VCF files to annoatate:",
             options=AnnotatorUIOptions.vcf_definition_method(),
+            index=1
         )
 
         if vcf_definition_method_selection == "File uploader":
@@ -320,7 +321,10 @@ def with_tab_annotator(tab: DeltaGenerator):
                 output_name=name_processed,
                 assembly=assembly_processed,
             )
-            st.text(f"Processed sources @ {vcf_dir_processed}")
+            
+            output = Directories.app_annotated_inputs()
+            st.text(f"Completed. Processed sources @ {vcf_dir_processed}")
+            st.write(f"Output annotated file to {output}{name_processed}")            
             anno_cache.clean_up()
 
 

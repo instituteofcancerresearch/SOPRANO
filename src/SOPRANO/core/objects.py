@@ -429,8 +429,9 @@ class GlobalParameters:
         )
 
         joined_df.to_csv(self.samples_path)
-        self.plot_hist()
-
+        if self.n_samples >= 1:
+            self.plot_hist()
+        
     @staticmethod
     def split_joined_df(
         joined_df: pd.DataFrame,

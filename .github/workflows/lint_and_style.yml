@@ -17,7 +17,7 @@ jobs:
           pip install ruff black
       - name: Lint check with ruff
         run: |
-          ruff --target-version=py311 --line-length 79 .
+          ruff check --line-length 79 .
       - name: Style check with black
         run: |
           black ./ --check --line-length 79

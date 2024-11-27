@@ -387,7 +387,8 @@ class GlobalParameters:
     @as_single_process()
     def gather(self):
         sample_results_paths = [
-            self.get_sample(idx).results_path for idx in range(-1, self.n_samples)
+            self.get_sample(idx).results_path
+            for idx in range(-1, self.n_samples)
         ]
 
         for expected_results_path in sample_results_paths:
@@ -431,7 +432,7 @@ class GlobalParameters:
         joined_df.to_csv(self.samples_path)
         if self.n_samples >= 1:
             self.plot_hist()
-        
+
     @staticmethod
     def split_joined_df(
         joined_df: pd.DataFrame,

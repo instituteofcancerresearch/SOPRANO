@@ -87,6 +87,7 @@ line_length = 79
 
 [tool.ruff]
 line-length = 79
+target-version = "py311"
 
 [tool.hatch.version]
 path = "src/version.py"

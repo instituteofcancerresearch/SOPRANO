@@ -92,3 +92,13 @@ ensembl_downloads/**/*.fa.gz
 tmp/
 /docs/index.md
 /site/
+
+# Personal dir testing
+pp_evo2/*
+data/*
+zz_beatriz/*
+pp_evo/*
+tmp2/*
+zz_users_angel/*    
+snvs/IBD002_platypus_omit024_filtered_vep.IBD002_012E.vcf
+snvs/PPCG0002a_DNA_vs_PPCG0002b_DNA.filtered.extended.pon.vcf.gz

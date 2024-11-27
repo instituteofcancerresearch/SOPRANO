@@ -1,0 +1,19 @@
+name: Add active to label
+
+on:
+  issues:
+    types:
+      - opened
+      - edited
+
+jobs:
+  add-to-project:
+    name: Set active label
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh issue edit "$NUMBER" --add-label "$LABELS"
+        env:
+          GH_TOKEN: ${{ secrets.LABEL_ACTIVE }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+          LABELS: active

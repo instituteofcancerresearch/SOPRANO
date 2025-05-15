@@ -293,7 +293,7 @@ class _Data:
         data: pd.DataFrame,
         column_key: str,
     ):
-        self.null_hypothesis_samples = null_hypothesis_samples
+        self.null_hypothesis_samples = null_hypothesis_samples.replace([np.inf, -np.inf], np.nan).dropna()
         self.data_value = None if data.empty else data[column_key].mean()
 
         # print(column_key)

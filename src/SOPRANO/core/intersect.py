@@ -3,7 +3,7 @@ import pathlib
 from SOPRANO.core.objects import AnalysisPaths, SOPRANOError
 from SOPRANO.utils.path_utils import is_empty
 from SOPRANO.utils.sh_utils import pipe
-
+import warnings
 
 def _intersect_by_frequency(
     corrected_matrix: pathlib.Path, nans_output: pathlib.Path
@@ -316,14 +316,50 @@ def _update_epitopes_data_file(
             overwrite=True,
         )
 
-
-def _check_target_mutations(paths: AnalysisPaths):
+def _check_target_mutations(
+    paths: AnalysisPaths
+) -> int:
     in_silent_count = get_counts(paths.in_silent_count)
     in_nonsilent_count = get_counts(paths.in_nonsilent_count)
     in_missense_count = get_counts(paths.in_missense_count)
 
-    if in_silent_count + in_nonsilent_count + in_missense_count == 0:
+    total_mutations = in_silent_count + in_nonsilent_count + in_missense_count
+    mutations_found = total_mutations > 0
+    
+    if mutations_found:
+        return 0
+
+    # No mutations identified
+    if not paths.use_random:
         raise SOPRANOError(
-            f"No mutations found in target region for input file "
+            "No mutations found in target region for input file "
             f"{paths.input_path}"
         )
+
+    # Random mode behavior
+    if paths.zero_ONtarget_strategy == "skip":
+        warnings.warn(
+            "Random mode enabled: no mutations found in target region; "
+            f"skipping input file {paths.input_path}.",
+            RuntimeWarning,
+        )
+        return 1
+
+    if paths.zero_ONtarget_strategy == "retry":
+        warnings.warn(
+            "Random mode enabled: no mutations found in target region; "
+            f"retrying once for input file {paths.input_path}.",
+            RuntimeWarning,
+        )
+        return 2  # caller triggers regenerate + rerun once
+
+    # Defensive fallback (should not happen due to typing)
+    warnings.warn(
+        "Random mode enabled with unknown error strategy; "
+        f"raising error for input file {paths.input_path}.",
+        RuntimeWarning,
+    )
+    raise SOPRANOError(
+        "No mutations found in target region for input file "
+        f"{paths.input_path}"
+    )

@@ -145,6 +145,7 @@ def with_tab_pipeline(tab: DeltaGenerator):
                 seed=random_seed,
                 transcripts=objects.TranscriptPaths.defaults(),
                 genomes=genome_processed,
+                zero_ONtarget_strategy="skip" # currently setting it to default 
             )
 
             RunTab.pipeline(params=params)

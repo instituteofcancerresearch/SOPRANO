@@ -1,6 +1,6 @@
 import pathlib
 
-from SOPRANO.core.objects import AnalysisPaths, SOPRANOError
+from SOPRANO.core.objects import AnalysisPaths, SOPRANOError, Parameters
 from SOPRANO.utils.path_utils import is_empty
 from SOPRANO.utils.sh_utils import pipe
 import warnings
@@ -317,7 +317,7 @@ def _update_epitopes_data_file(
         )
 
 def _check_target_mutations(
-    paths: AnalysisPaths
+    paths: Parameters#AnalysisPaths
 ) -> int:
     in_silent_count = get_counts(paths.in_silent_count)
     in_nonsilent_count = get_counts(paths.in_nonsilent_count)
@@ -344,14 +344,6 @@ def _check_target_mutations(
             RuntimeWarning,
         )
         return 1
-
-    if paths.zero_ONtarget_strategy == "retry":
-        warnings.warn(
-            "Random mode enabled: no mutations found in target region; "
-            f"retrying once for input file {paths.input_path}.",
-            RuntimeWarning,
-        )
-        return 2  # caller triggers regenerate + rerun once
 
     # Defensive fallback (should not happen due to typing)
     warnings.warn(

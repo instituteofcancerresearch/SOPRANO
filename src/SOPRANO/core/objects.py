@@ -269,9 +269,9 @@ class Parameters(AnalysisPaths):
             analysis_name, input_path, bed_path, cache_dir, random_regions
         )
 
-        if zero_ONtarget_strategy not in {"skip", "retry"}:
+        if zero_ONtarget_strategy not in {"skip"}:
             raise ValueError(
-                "zero_ONtarget_strategy must be one of {'skip', 'retry'}, "
+                "zero_ONtarget_strategy must be one of {'skip'}, "
                 f"got {zero_ONtarget_strategy!r}"
             )
 
@@ -558,7 +558,8 @@ class GlobalParameters:
         sample_kwargs["cache_dir"] = sample_cache
         sample_kwargs["analysis_name"] = subdir_name
         sample_kwargs["use_random"] = use_random
-        sample_kwargs["zero_ONtarget_strategy"] = self.zero_ONtarget_strategy
+        # TODO: clean once validated. I think no need to copy it here as it is already include
+        #sample_kwargs["zero_ONtarget_strategy"] = self.zero_ONtarget_strategy 
 
         return Parameters(**sample_kwargs)
 

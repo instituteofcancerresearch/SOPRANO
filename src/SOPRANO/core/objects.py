@@ -28,7 +28,11 @@ from SOPRANO.utils.url_utils import (
     find_latest_release,
 )
 
-ZeroONTargetStrategy = Literal["skip"]#, "retry"] #removing retry for the moment
+ZeroONTargetStrategy = Literal[
+    "skip"
+]  # , "retry"] #removing retry for the moment
+
+
 @dataclass(frozen=True)
 class TranscriptPaths:
     transcript_length: pathlib.Path
@@ -248,6 +252,7 @@ def init_logger(name: str, log_path: pathlib.Path):
     logger.addHandler(log_file_handler)
 
     return logger
+
 
 class Parameters(AnalysisPaths):
     def __init__(
@@ -559,12 +564,15 @@ class GlobalParameters:
         sample_kwargs["analysis_name"] = subdir_name
         sample_kwargs["use_random"] = use_random
         # TODO: clean once validated. I think no need to copy it here as it is already include
-        #sample_kwargs["zero_ONtarget_strategy"] = self.zero_ONtarget_strategy 
+        # sample_kwargs["zero_ONtarget_strategy"] = self.zero_ONtarget_strategy
 
         return Parameters(**sample_kwargs)
 
     def get_all_samples(self, _init=False):
-        samples = [self.get_sample(idx, _init=_init) for idx in range(-1, self.n_samples)]
+        samples = [
+            self.get_sample(idx, _init=_init)
+            for idx in range(-1, self.n_samples)
+        ]
         if not _init:
             return [s for s in samples if not s.is_complete()]
 

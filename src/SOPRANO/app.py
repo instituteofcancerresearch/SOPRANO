@@ -145,7 +145,7 @@ def with_tab_pipeline(tab: DeltaGenerator):
                 seed=random_seed,
                 transcripts=objects.TranscriptPaths.defaults(),
                 genomes=genome_processed,
-                zero_ONtarget_strategy="skip" # currently setting it to default 
+                zero_ONtarget_strategy="skip",
             )
 
             RunTab.pipeline(params=params)
@@ -342,40 +342,32 @@ def with_tab_info(tab: DeltaGenerator):
             "further runtime configuration choices.  "
         )
         st.divider()
-        st.write(
-            """
+        st.write("""
             **Citation and Acknowledgement:**  
             *If you use this tool, please cite the following publication:*
-            """
-        )
+            """)
         st.caption(
             "Zapata, L., Caravagna, G., Williams, M.J. et al. "
             "Immune selection determines tumor antigenicity and influences response to "
             "checkpoint inhibitors. Nat Genet 55, 451–460 (2023). "
             "[doi.org/10.1038/s41588-023-01313-1](https://doi.org/10.1038/s41588-023-01313-1)"
         )
-        st.caption(
-            """            
+        st.caption("""            
             *We acknowledge Kareem Marzouk and the RSE Group at The Institute of Cancer Research for 
             providing software development of the SOPRANO pipeline and web-app. 
             [doi/10.5281/zenodo](https://zenodo.org/doi/10.5281/zenodo.10638989). This work is based on the 
             above publication which includes the original SOPRANO pipeline.*
-            """
-        )
+            """)
         st.divider()
         st.write("**License and help**")
-        st.caption(
-            """
+        st.caption("""
             SOPRANO is licensed under the 
             [GNU General Public License](https://github.com/instituteofcancerresearch/SOPRANO/blob/python/LICENSE)
-            """
-        )
-        st.caption(
-            """
+            """)
+        st.caption("""
             Any technical issues can be raised 
             [here on GitHub](https://github.com/instituteofcancerresearch/SOPRANO/issues)
-            """
-        )
+            """)
         st.divider()
 
 

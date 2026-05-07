@@ -17,18 +17,33 @@
 # right native variant from the same tag. Build context must be on a
 # buildx-capable engine (Docker Desktop satisfies this by default).
 #
+# Each build is dual-tagged with a mutable version (rse.1) and an immutable
+# commit-SHA tag (rse.1-<sha7>) so the exact source is always recoverable.
+# Build args populate OCI labels visible via `docker inspect`.
+#
 #   docker login                                # one-time, must have push rights
 #   docker buildx create --use --name multiarch # one-time per machine
+#
+#   VERSION=rse.1
+#   SHA=$(git rev-parse --short=7 HEAD)
 #   docker buildx build \
 #       --platform=linux/amd64,linux/arm64 \
-#       -t icrsc/soprano-nf:rse.1 \
+#       --build-arg GIT_COMMIT=$(git rev-parse HEAD) \
+#       --build-arg GIT_TAG=$(git describe --tags --always --dirty) \
+#       --build-arg BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+#       -t icrsc/soprano-nf:${VERSION} \
+#       -t icrsc/soprano-nf:${VERSION}-${SHA} \
 #       --push \
 #       -f Dockerfile.runtime .
+#
+# Inspect the embedded provenance after a pull:
+#   docker inspect icrsc/soprano-nf:rse.1 \
+#       --format '{{json .Config.Labels}}' | jq
 #
 # Notes:
 #   - On Apple Silicon, the arm64 build is native; the amd64 build runs under
 #     QEMU emulation and takes substantially longer (~30-60 min vs ~5-10).
-#   - To bump the tag, change `rse.1` to e.g. `rse.2` and rebuild/push.
+#   - To cut a new release, bump VERSION (rse.2, rse.3, ...) and rebuild/push.
 #   - --push uploads directly to the registry; nothing is loaded locally.
 #     If you also want a local image, run a single-arch build separately with
 #     `--load` (see "Local build" above).
@@ -108,6 +123,16 @@ RUN micromamba run -n soprano python -m pip install --no-cache-dir -U pip setupt
 # Installed late so it does not bust the conda/R/pip layer cache.
 RUN apt-get update && apt-get install -y --no-install-recommends procps \
     && rm -rf /var/lib/apt/lists/*
+
+# Provenance — passed in at build time, surfaced as OCI labels so the exact
+# source commit is recoverable from any pulled image. Kept near the end so
+# bumping these does not invalidate the slow layers above.
+ARG GIT_COMMIT=unknown
+ARG GIT_TAG=unknown
+ARG BUILD_DATE=unknown
+LABEL org.opencontainers.image.revision="${GIT_COMMIT}" \
+      org.opencontainers.image.version="${GIT_TAG}" \
+      org.opencontainers.image.created="${BUILD_DATE}"
 
 # Runtime ENV — kept LAST so tweaking it does not invalidate the heavy layers above.
 # HOME / MPLCONFIGDIR / XDG_* / FONTCONFIG_PATH ensure matplotlib + fontconfig find a

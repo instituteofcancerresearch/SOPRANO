@@ -2,15 +2,40 @@
 #
 # SOPRANO runtime image — Docker translation of Singularity.def.
 #
-# Build from the SOPRANO repo root:
+# ---------------------------------------------------------------------------
+# Local build (host architecture; e.g. arm64 on Apple Silicon)
+# ---------------------------------------------------------------------------
 #   docker build -f Dockerfile.runtime -t soprano:latest .
-#
-# Convert to Singularity for cluster deployment:
-#   docker save soprano:latest -o soprano.tar
-#   singularity build soprano.sif docker-archive:soprano.tar
 #
 # Run:
 #   docker run --rm soprano:latest soprano-run --help
+#
+# ---------------------------------------------------------------------------
+# Build multi-arch (linux/amd64 + linux/arm64) and push to Docker Hub
+# ---------------------------------------------------------------------------
+# Lets HPC users (amd64) and developers on Apple Silicon (arm64) pull the
+# right native variant from the same tag. Build context must be on a
+# buildx-capable engine (Docker Desktop satisfies this by default).
+#
+#   docker login                                # one-time, must have push rights
+#   docker buildx create --use --name multiarch # one-time per machine
+#   docker buildx build \
+#       --platform=linux/amd64,linux/arm64 \
+#       -t icrsc/soprano-nf:rse.1 \
+#       --push \
+#       -f Dockerfile.runtime .
+#
+# Notes:
+#   - On Apple Silicon, the arm64 build is native; the amd64 build runs under
+#     QEMU emulation and takes substantially longer (~30-60 min vs ~5-10).
+#   - To bump the tag, change `rse.1` to e.g. `rse.2` and rebuild/push.
+#   - --push uploads directly to the registry; nothing is loaded locally.
+#     If you also want a local image, run a single-arch build separately with
+#     `--load` (see "Local build" above).
+#
+# On the cluster, convert the published image to a Singularity .sif:
+#   singularity build soprano.sif docker://icrsc/soprano-nf:rse.1
+# ---------------------------------------------------------------------------
 #
 FROM mambaorg/micromamba:1.5.10
 

@@ -72,6 +72,9 @@ def _sanitize_sklearn_input(
 ):
     numpy_array = data_frame[key].to_numpy().copy()
 
+    # Remove inf/nan values before passing to sklearn estimators.
+    numpy_array = numpy_array[np.isfinite(numpy_array)]
+
     if sort:
         numpy_array.sort()
 
@@ -145,6 +148,7 @@ def _iterate_until_convergence(
             f"Maximum number of iterations exceeded: {max_iterations}\n"
             f"exiting with P(dN/dS)={estimator(first_step)}"
         )
+        return first_step
 
     next_step = method(first_step)
 
@@ -211,6 +215,8 @@ def _estimate_pvalue(
     lower_integral_bound: float,
     upper_integral_bound: float,
 ) -> tuple[float, float]:
+    if observed_value is None:
+        return None, None
     pvalue_left = quad(estimator, lower_integral_bound, observed_value)[0]
     pvalue_right = quad(estimator, observed_value, upper_integral_bound)[0]
 
@@ -294,16 +300,29 @@ class _Data:
         column_key: str,
     ):
         self.null_hypothesis_samples = null_hypothesis_samples
-        self.data_value = None if data.empty else data[column_key].mean()
-
-        # print(column_key)
-        # print(self.data_value)
-        # print(data)
-
         self.column_key = column_key
+
+        if data.empty:
+            self.data_value = None
+        else:
+            finite_data_col = data[column_key][np.isfinite(data[column_key])]
+            self.data_value = (
+                None if finite_data_col.empty else finite_data_col.mean()
+            )
+
         self.is_available = _samples_and_data_ara_available(
             null_hypothesis_samples, data
         )
+
+        if self.is_available:
+            finite_col = null_hypothesis_samples[column_key]
+            finite_col = finite_col[np.isfinite(finite_col)]
+            if finite_col.empty:
+                warnings.warn(
+                    f"All null hypothesis samples for '{column_key}' are "
+                    "non-finite. Skipping KDE estimation."
+                )
+                self.is_available = False
 
         if self.is_available:
             self.estimates = self._apply_estimator()
@@ -316,11 +335,12 @@ class _Data:
         )
 
         samples = self.null_hypothesis_samples[self.column_key]
+        finite_samples = samples[np.isfinite(samples)]
 
         integration_bounds = _determine_integration_bounds(
             estimator=estimator,
-            sample_values_min=samples.min(),
-            sample_values_max=samples.max(),
+            sample_values_min=finite_samples.min(),
+            sample_values_max=finite_samples.max(),
             absolute_tol=DefaultKDE.get_int_abs_tol(),
             relative_tol=DefaultKDE.get_int_rel_tol(),
             step_percent=DefaultKDE.get_int_step_size(),
@@ -331,9 +351,9 @@ class _Data:
             estimator, self.data_value, *integration_bounds
         )
 
-        std = _estimate_std_deviation(samples)
+        std = _estimate_std_deviation(finite_samples)
 
-        sample_mean = _samples_mean(samples)
+        sample_mean = _samples_mean(finite_samples)
 
         return EstimatorResults(
             estimator=estimator,
@@ -462,8 +482,9 @@ class _HistogramData(_Data):
 
     def plot_hist(self, ax, zorder: int):
         if self.is_available:
+            col = self.null_hypothesis_samples[self.column_key]
             ax.hist(
-                self.null_hypothesis_samples[self.column_key],
+                col[np.isfinite(col)],
                 zorder=zorder,
                 **self.sample_hist_kwargs,
             )
@@ -479,7 +500,7 @@ class _HistogramData(_Data):
             )
 
     def plot_data(self, ax, zorder: int):
-        if self.is_available:
+        if self.is_available and self.data_value is not None:
             ax.axvline(
                 self.data_value, zorder=zorder, **self.data_vline_kwargs
             )

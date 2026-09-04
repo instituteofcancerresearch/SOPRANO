@@ -4,7 +4,7 @@ import pathlib
 import warnings
 from argparse import Namespace
 from dataclasses import dataclass
-from typing import Set
+from typing import Literal, Set
 
 import pandas as pd
 
@@ -27,6 +27,10 @@ from SOPRANO.utils.url_utils import (
     find_earliest_release,
     find_latest_release,
 )
+
+ZeroONTargetStrategy = Literal[
+    "skip"
+]  # , "retry"] #removing retry for the moment
 
 
 @dataclass(frozen=True)
@@ -220,6 +224,7 @@ _NAMESPACE_KEYS = (
     "assembly",
     "release",
     "n_samples",
+    "zero_ONtarget_strategy",
 )
 
 
@@ -228,8 +233,7 @@ def check_cache_path(cache_dir: pathlib.Path, name: str) -> pathlib.Path:
         job_cache = cache_dir.joinpath(name)
         job_cache.mkdir(exist_ok=True)
         return job_cache
-    else:
-        raise NotADirectoryError(cache_dir)
+    raise NotADirectoryError(cache_dir)
 
 
 def init_logger(name: str, log_path: pathlib.Path):
@@ -264,10 +268,17 @@ class Parameters(AnalysisPaths):
         seed: int | None,
         transcripts: TranscriptPaths,
         genomes: GenomePaths,
+        zero_ONtarget_strategy: ZeroONTargetStrategy = "skip",
     ):
         super().__init__(
             analysis_name, input_path, bed_path, cache_dir, random_regions
         )
+
+        if zero_ONtarget_strategy not in {"skip"}:
+            raise ValueError(
+                "zero_ONtarget_strategy must be one of {'skip'}, "
+                f"got {zero_ONtarget_strategy!r}"
+            )
 
         self.transcripts = transcripts
         self.genomes = genomes
@@ -277,6 +288,7 @@ class Parameters(AnalysisPaths):
         self.exclude_drivers = exclude_drivers
         self.seed = seed
         self.logger = init_logger(self.analysis_name, self.log_path)
+        self.zero_ONtarget_strategy = zero_ONtarget_strategy
 
         self.log("parameters initialized")
 
@@ -298,6 +310,7 @@ class GlobalParameters:
         transcripts: TranscriptPaths,
         genomes: GenomePaths,
         n_samples: int,
+        zero_ONtarget_strategy: ZeroONTargetStrategy = "skip",
     ):
         # Sanitized
         self.job_cache = check_cache_path(job_cache, analysis_name)
@@ -312,6 +325,7 @@ class GlobalParameters:
         self.transcripts = transcripts
         self.genomes = genomes
         self.n_samples = n_samples
+        self.zero_ONtarget_strategy = zero_ONtarget_strategy
 
         self.get_all_samples(_init=True)
         self.cache_ordered_params()
@@ -415,18 +429,20 @@ class GlobalParameters:
                         [joined_df, pd.read_csv(path, sep="\t")],
                         ignore_index=True,
                     )
-
                 f.write(f"{path.as_posix()}\n")
 
-        # Dropped estimateed statistics... don't mean much in this context
-        joined_df.drop(
+        assert joined_df is not None  # for type checkers
+
+        # Dropped estimated statistics... don't mean much in this context
+        joined_df = joined_df.drop(
             columns=[
                 "ON_Low_CI",
                 "ON_High_CI",
                 "OFF_Low_CI",
                 "OFF_High_CI",
                 "Pvalue",
-            ]
+            ],
+            errors="ignore",
         )
 
         joined_df.to_csv(self.samples_path)
@@ -513,6 +529,7 @@ class GlobalParameters:
             transcripts=transcripts,
             genomes=genomes,
             n_samples=n_samples,
+            zero_ONtarget_strategy=namespace.zero_ONtarget_strategy,
         )
 
     def get_data(self):
@@ -528,7 +545,7 @@ class GlobalParameters:
         sample_seed = self.seed + idx if idx > -1 else None
         subdir_name = "data" if idx == -1 else "sample_%04d" % idx
         sample_cache = self.job_cache / subdir_name
-        use_random = idx > -1
+        use_random = idx > -1  # use random set internally
 
         if _init:
             if COMM.Get_rank() == 0:
@@ -546,6 +563,8 @@ class GlobalParameters:
         sample_kwargs["cache_dir"] = sample_cache
         sample_kwargs["analysis_name"] = subdir_name
         sample_kwargs["use_random"] = use_random
+        # TODO: clean once validated. I think no need to copy it here as it is already include
+        # sample_kwargs["zero_ONtarget_strategy"] = self.zero_ONtarget_strategy
 
         return Parameters(**sample_kwargs)
 
@@ -554,7 +573,6 @@ class GlobalParameters:
             self.get_sample(idx, _init=_init)
             for idx in range(-1, self.n_samples)
         ]
-
         if not _init:
             return [s for s in samples if not s.is_complete()]
 

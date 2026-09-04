@@ -125,7 +125,13 @@ def parse_args(argv=None):
         action="store_true",
         help="If flag is used ssb192 will be used, otherwise ssb7.",
     )
-
+    analysis_params_group.add_argument(
+        "--zero_ONtarget_strategy",
+        dest="zero_ONtarget_strategy",
+        choices=["skip"],
+        default="skip",
+        help="Strategy to apply when zero ON-target mutations are encountered.",
+    )
     # analysis_params_group.add_argument(
     #     "--use_random",
     #     dest="use_random",

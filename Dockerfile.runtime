@@ -1,0 +1,151 @@
+# syntax=docker/dockerfile:1.6
+#
+# SOPRANO runtime image — Docker translation of Singularity.def.
+#
+# ---------------------------------------------------------------------------
+# Local build (host architecture; e.g. arm64 on Apple Silicon)
+# ---------------------------------------------------------------------------
+#   docker build -f Dockerfile.runtime -t soprano:latest .
+#
+# Run:
+#   docker run --rm soprano:latest soprano-run --help
+#
+# ---------------------------------------------------------------------------
+# Build multi-arch (linux/amd64 + linux/arm64) and push to Docker Hub
+# ---------------------------------------------------------------------------
+# Lets HPC users (amd64) and developers on Apple Silicon (arm64) pull the
+# right native variant from the same tag. Build context must be on a
+# buildx-capable engine (Docker Desktop satisfies this by default).
+#
+# Each build is dual-tagged with a mutable version (rse.1) and an immutable
+# commit-SHA tag (rse.1-<sha7>) so the exact source is always recoverable.
+# Build args populate OCI labels visible via `docker inspect`.
+#
+#   docker login                                # one-time, must have push rights
+#   docker buildx create --use --name multiarch # one-time per machine
+#
+#   VERSION=rse.1
+#   SHA=$(git rev-parse --short=7 HEAD)
+#   docker buildx build \
+#       --platform=linux/amd64,linux/arm64 \
+#       --build-arg GIT_COMMIT=$(git rev-parse HEAD) \
+#       --build-arg GIT_TAG=$(git describe --tags --always --dirty) \
+#       --build-arg BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+#       -t icrsc/soprano-nf:${VERSION} \
+#       -t icrsc/soprano-nf:${VERSION}-${SHA} \
+#       --push \
+#       -f Dockerfile.runtime .
+#
+# Inspect the embedded provenance after a pull:
+#   docker inspect icrsc/soprano-nf:rse.1 \
+#       --format '{{json .Config.Labels}}' | jq
+#
+# Notes:
+#   - On Apple Silicon, the arm64 build is native; the amd64 build runs under
+#     QEMU emulation and takes substantially longer (~30-60 min vs ~5-10).
+#   - To cut a new release, bump VERSION (rse.2, rse.3, ...) and rebuild/push.
+#   - --push uploads directly to the registry; nothing is loaded locally.
+#     If you also want a local image, run a single-arch build separately with
+#     `--load` (see "Local build" above).
+#
+# On the cluster, convert the published image to a Singularity .sif:
+#   singularity build soprano.sif docker://icrsc/soprano-nf:rse.1
+# ---------------------------------------------------------------------------
+#
+FROM mambaorg/micromamba:1.5.10
+
+LABEL org.opencontainers.image.title="SOPRANO" \
+      org.opencontainers.image.description="SOPRANO runtime (conda + R deps + pip install .)" \
+      org.opencontainers.image.source="https://github.com/instituteofcancerresearch/SOPRANO"
+
+USER root
+SHELL ["/bin/bash", "-eu", "-o", "pipefail", "-c"]
+
+# Build-time only — kept as ARG so it doesn't end up in the final image env.
+ARG DEBIAN_FRONTEND=noninteractive
+
+# OS dependencies (build tools + libs that R/GitHub installs often need).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git \
+        ca-certificates \
+        curl \
+        wget \
+        build-essential \
+        pkg-config \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        libxml2-dev \
+        libfontconfig1-dev \
+        libfreetype6-dev \
+        libharfbuzz-dev \
+        libfribidi-dev \
+        libpng-dev \
+        libtiff5-dev \
+        libjpeg-dev \
+        zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# nf-soprano hard-codes /bin/micromamba in its activation hook; ensure it's there.
+RUN [ -e /bin/micromamba ] || ln -sf "$(command -v micromamba)" /bin/micromamba
+
+WORKDIR /opt/soprano
+
+# Conda env (rebuilt only when env.yml changes).
+COPY env.yml /opt/soprano/env.yml
+RUN micromamba create -y -n soprano -f /opt/soprano/env.yml \
+ && micromamba clean -a -y
+
+# R packages (rebuilt only when install_R_pkgs.R changes).
+# `remotes` is installed first because devtools 2.5+ delegates install_github to it
+# but env.yml currently does not pin r-remotes.
+COPY install_R_pkgs.R /opt/soprano/install_R_pkgs.R
+RUN micromamba run -n soprano Rscript -e 'install.packages("remotes", repos="https://cloud.r-project.org/")' \
+ && micromamba run -n soprano Rscript /opt/soprano/install_R_pkgs.R
+
+# SOPRANO source — most frequently changing layer, keep last.
+COPY . /opt/soprano/src
+
+# Install SOPRANO + reproduce the symlink layout from Singularity.def.
+RUN micromamba run -n soprano python -m pip install --no-cache-dir -U pip setuptools wheel \
+ && micromamba run -n soprano python -m pip install --no-cache-dir /opt/soprano/src \
+ && PY_LIB=$(micromamba run -n soprano python -c "import sys; print(f'lib/python{sys.version_info.major}.{sys.version_info.minor}')") \
+ && SOPRANO_PKG=$(micromamba run -n soprano python -c "import os, SOPRANO; print(os.path.dirname(SOPRANO.__file__))") \
+ && ln -sf /opt/soprano/src/data              ${SOPRANO_PKG}/data \
+ && ln -sf /opt/soprano/src/data              /opt/conda/envs/soprano/${PY_LIB}/data \
+ && ln -sf /opt/soprano/src/ensembl_downloads /opt/conda/envs/soprano/${PY_LIB}/ensembl_downloads \
+ && ln -sf /opt/soprano/src/app_sources       /opt/conda/envs/soprano/${PY_LIB}/app_sources \
+ && ln -sf /opt/soprano/src/tests             /opt/conda/envs/soprano/${PY_LIB}/tests \
+ && mkdir -p /opt/soprano/src/pipeline_cache \
+ && ln -sf /opt/soprano/src/pipeline_cache    /opt/conda/envs/soprano/${PY_LIB}/pipeline_cache \
+ && chmod -R a+rwX /opt/soprano/src/pipeline_cache
+
+# procps provides `ps`, which Nextflow's task wrapper requires to collect metrics.
+# Installed late so it does not bust the conda/R/pip layer cache.
+RUN apt-get update && apt-get install -y --no-install-recommends procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Provenance — passed in at build time, surfaced as OCI labels so the exact
+# source commit is recoverable from any pulled image. Kept near the end so
+# bumping these does not invalidate the slow layers above.
+ARG GIT_COMMIT=unknown
+ARG GIT_TAG=unknown
+ARG BUILD_DATE=unknown
+LABEL org.opencontainers.image.revision="${GIT_COMMIT}" \
+      org.opencontainers.image.version="${GIT_TAG}" \
+      org.opencontainers.image.created="${BUILD_DATE}"
+
+# Runtime ENV — kept LAST so tweaking it does not invalidate the heavy layers above.
+# HOME / MPLCONFIGDIR / XDG_* / FONTCONFIG_PATH ensure matplotlib + fontconfig find a
+# writable cache when Nextflow runs the container as the host UID/GID.
+ENV CONDA_DEFAULT_ENV=soprano \
+    SOPRANO_CACHE=/tmp/soprano_cache \
+    PATH=/opt/conda/envs/soprano/bin:/opt/conda/bin:$PATH \
+    HOME=/tmp \
+    MPLCONFIGDIR=/tmp/matplotlib \
+    XDG_CACHE_HOME=/tmp/.cache \
+    XDG_CONFIG_HOME=/tmp/.config \
+    FONTCONFIG_PATH=/tmp/fontconfig
+
+# No ENTRYPOINT — Nextflow injects its own commands.
+ENTRYPOINT []
+CMD ["soprano-run", "--help"]

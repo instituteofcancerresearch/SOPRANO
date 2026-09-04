@@ -1,0 +1,23 @@
+.git
+.github
+.gitignore
+.pytest_cache
+.ruff_cache
+.DS_Store
+**/__pycache__
+**/*.pyc
+
+# Genome references — bind-mounted at runtime, not baked into the image.
+# The empty ensembl_downloads/ dir is still copied so the runtime symlinks resolve.
+ensembl_downloads/**
+!ensembl_downloads/
+!ensembl_downloads/.gitkeep
+
+# Docs / dev metadata not needed at runtime
+docs
+mkdocs.yml
+.markdownlint.yaml
+.pre-commit-config.yaml
+dev.md
+test.yml
+citation.cff

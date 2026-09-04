@@ -1,0 +1,87 @@
+Bootstrap: docker
+From: mambaorg/micromamba:1.5.10
+
+%labels
+    Author YourName
+    Description SOPRANO runtime (conda + R deps + pip install .)
+
+%environment
+    # Activate conda env by default
+    export MAMBA_ROOT_PREFIX=/opt/conda
+    export PATH=/opt/conda/envs/soprano/bin:/opt/conda/bin:$PATH
+    export CONDA_DEFAULT_ENV=soprano
+    # Optional: where SOPRANO may cache things
+    export SOPRANO_CACHE=/tmp/soprano_cache
+
+%files
+    # Build-context paths (left) -> image paths (right)
+    env.yml            /opt/soprano/env.yml
+    install_R_pkgs.R   /opt/soprano/install_R_pkgs.R
+    .                  /opt/soprano/src
+
+%post
+    #!/bin/bash
+    set -eux
+    # ---- OS deps (build tools + libs that R/GitHub installs often need) ----
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        git \
+        ca-certificates \
+        curl \
+        wget \
+        build-essential \
+        pkg-config \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        libxml2-dev \
+        libfontconfig1-dev \
+        libfreetype6-dev \
+        libharfbuzz-dev \
+        libfribidi-dev \
+        libpng-dev \
+        libtiff5-dev \
+        libjpeg-dev \
+        zlib1g-dev
+    rm -rf /var/lib/apt/lists/*
+
+    # ---- Copy recipe inputs into the image ----
+    cd /opt/soprano
+
+    # Verify files exist
+    echo "=== Verifying files in /opt/soprano ==="
+    ls -la /opt/soprano/
+    test -f env.yml || { echo "ERROR: env.yml not found"; exit 1; }
+    test -f install_R_pkgs.R || { echo "ERROR: install_R_pkgs.R not found"; exit 1; }
+
+    # ---- Create conda env (soprano) ----
+    micromamba create -y -n soprano -f env.yml
+    micromamba clean -a -y
+
+    # ---- Install additional R pkgs from CRAN + GitHub (dndscv) ----
+    # Note: your script uses str_split() so it needs stringr available (it is).
+    micromamba run -n soprano Rscript /opt/soprano/install_R_pkgs.R
+
+    # ---- Install SOPRANO python package ----
+    # Expect the SOPRANO repo to be copied in via %files below to /opt/soprano/src
+    micromamba run -n soprano python -m pip install --no-cache-dir -U pip setuptools wheel
+    micromamba run -n soprano python -m pip install --no-cache-dir /opt/soprano/src
+    
+    # After pip install, create symlink to data directory
+    ln -sf /opt/soprano/src/data /opt/conda/envs/soprano/lib/python3.11/data
+    SOPRANO_PKG=$(micromamba run -n soprano python -c "import SOPRANO; import os; print(os.path.dirname(SOPRANO.__file__))")
+    ln -sf /opt/soprano/src/data ${SOPRANO_PKG}/data
+    # Link all required SOPRANO directories to where the code expects them
+    ln -sf /opt/soprano/src/data /opt/conda/envs/soprano/lib/python3.11/data
+    ln -sf /opt/soprano/src/ensembl_downloads /opt/conda/envs/soprano/lib/python3.11/ensembl_downloads
+    ln -sf /opt/soprano/src/app_sources /opt/conda/envs/soprano/lib/python3.11/app_sources
+    ln -sf /opt/soprano/src/tests /opt/conda/envs/soprano/lib/python3.11/tests
+
+    # Create pipeline_cache directory (if it doesn't exist yet)
+    mkdir -p /opt/soprano/src/pipeline_cache
+    ln -sf /opt/soprano/src/pipeline_cache /opt/conda/envs/soprano/lib/python3.11/pipeline_cache
+
+
+%runscript
+    # Default entrypoint: show SOPRANO help (or just drop to python)
+    exec soprano-run "$@"
+

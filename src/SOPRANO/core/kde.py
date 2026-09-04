@@ -118,7 +118,10 @@ def _probability_estimator(
     base_estimator = _build_gaussian_kde(null_hypothesis_samples, key)
 
     def _estimator_to_vectorize(x):
-        return np.exp(base_estimator.score_samples(np.array([x])[:, None]))
+        # score_samples returns a (1,) array; np.vectorize requires the inner
+        # function to return a scalar, otherwise asanyarray raises
+        # "setting an array element with a sequence" downstream.
+        return np.exp(base_estimator.score_samples(np.array([x])[:, None])).item()
 
     return np.vectorize(_estimator_to_vectorize)
 

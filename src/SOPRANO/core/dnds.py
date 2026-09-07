@@ -443,6 +443,17 @@ def _compute_coverage(paths: AnalysisPaths):
 
         # NOTE: ON/OFF_NS appear sensitive to the reference genome release!
 
+    # OFF mode drops the p-value, but only without intron correction. The
+    # shell's calculateKaKsEpiCorrected_CI_mod4OFF.R prints the literal "NA"
+    # in that column and leaves estimate_pval defined but uncalled, whereas
+    # calculateKaKsEpiCorrected_CI_intron_V3_mod4OFF.R still prints both
+    # p-values. So this applies exactly when there is no Exonic_Intronic row.
+    #
+    # The literal string, rather than NaN, so the file matches the shell's
+    # output when the two are diffed; pandas reads it back as NaN either way.
+    if getattr(paths, "off_mode", False) and "mutsintron" not in mut_counts:
+        results_df["Pvalue"] = "NA"
+
     print(f"Exporting results to {paths.results_path}:")
     print(results_df)
     results_df.to_csv(paths.results_path, sep="\t", index=False)

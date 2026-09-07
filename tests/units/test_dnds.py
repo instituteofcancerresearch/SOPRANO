@@ -126,3 +126,59 @@ def test__compute_kaks_intron():
 def test__compute_conf_interval():
     # TODO: Implement
     pass
+
+
+class _CoveragePaths:
+    """Just enough of AnalysisPaths for _compute_coverage to run for real."""
+
+    def __init__(self, tmp_path, off_mode, with_intron):
+        self.off_mode = off_mode
+        self.data_epitopes = tmp_path / "data_epitopes"
+        self.epitope_nans = tmp_path / "epitope_nans"
+        self.intra_epitope_nans = tmp_path / "intra_epitope_nans"
+        self.intron_rate = tmp_path / "intron_rate"
+        self.results_path = tmp_path / "results.tsv"
+
+        # One transcript with both mutation classes, on and off target.
+        self.data_epitopes.write_text(
+            "ENST00000000233\t2\textra_missense_variant\n"
+            "ENST00000000233\t4\textra_synonymous_variant\n"
+            "ENST00000000233\t6\tintra_missense_variant\n"
+            "ENST00000000233\t8\tintra_synonymous_variant\n"
+        )
+        self.epitope_nans.write_text("1000\t2000\n")
+        self.intra_epitope_nans.write_text("3000\t4000\n")
+        # An empty intron rate file means no intron correction, so no
+        # Exonic_Intronic row -- which is the case OFF mode drops the p-value in.
+        self.intron_rate.write_text(
+            "ENST00000000233\t0.5\t3\t500\n" if with_intron else ""
+        )
+
+
+def _run_coverage(tmp_path, off_mode, with_intron):
+    paths = _CoveragePaths(tmp_path, off_mode, with_intron)
+    dnds._compute_coverage(paths)
+    return pd.read_csv(paths.results_path, sep="\t", keep_default_na=False)
+
+
+def test_off_mode_drops_pvalue_without_intron_correction(tmp_path):
+    """calculateKaKsEpiCorrected_CI_mod4OFF.R prints the literal NA."""
+    df = _run_coverage(tmp_path, off_mode=True, with_intron=False)
+    assert list(df["Coverage"]) == ["Exonic_Only"]
+    assert list(df["Pvalue"]) == ["NA"]
+
+
+def test_off_mode_keeps_pvalue_with_intron_correction(tmp_path):
+    """calculateKaKsEpiCorrected_CI_intron_V3_mod4OFF.R still prints Pval."""
+    df = _run_coverage(tmp_path, off_mode=True, with_intron=True)
+    assert list(df["Coverage"]) == ["Exonic_Only", "Exonic_Intronic"]
+    assert "NA" not in list(df["Pvalue"])
+    assert all(float(v) >= 0 for v in df["Pvalue"])
+
+
+def test_pvalue_unaffected_outside_off_mode(tmp_path):
+    for with_intron in (False, True):
+        sub = tmp_path / f"intron_{with_intron}"
+        sub.mkdir()
+        df = _run_coverage(sub, off_mode=False, with_intron=with_intron)
+        assert "NA" not in list(df["Pvalue"])

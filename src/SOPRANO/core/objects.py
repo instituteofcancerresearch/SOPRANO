@@ -115,6 +115,10 @@ class AnalysisPaths:
         self.random_regions_path = random_regions
         self.cache_dir = cache_dir
 
+        # Target BED restricted to transcripts carrying mutations. Written
+        # only in OFF mode; see target_bed below.
+        self.filtered_bed = self._cached_path("bed", "tmp")
+
         # Transcripts
         self.filtered_protein_transcript = self._cached_path(
             "protein_length_filt", "txt"
@@ -208,6 +212,21 @@ class AnalysisPaths:
         self.results_path = self._cached_path("results", "tsv")
 
         self.log_path = self._cached_path("log")
+
+    @property
+    def target_bed(self) -> pathlib.Path:
+        """The BED the coordinate steps operate on.
+
+        In OFF mode this is the input BED restricted to transcripts that carry
+        mutations, mirroring run_localSSBselection_vLOCAL_MOD4OFF.sh, which
+        writes $BED.tmp once and then substitutes it for $BED at every
+        subsequent use -- length filtering, exclusion regions, both shuffle
+        branches and the non-randomised path. Outside OFF mode it is the input
+        BED unchanged.
+        """
+        if getattr(self, "off_mode", False):
+            return self.filtered_bed
+        return self.bed_path
 
     def _cached_path(self, *extensions):
         file_name = f"{self.analysis_name}"

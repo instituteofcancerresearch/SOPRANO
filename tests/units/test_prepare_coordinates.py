@@ -3,6 +3,7 @@ from _step2_fixtures import mock_bed_content, tab_line
 from _test_utils import check_expected_content
 
 import SOPRANO.core.prepare_coordinates as prep_coords
+from SOPRANO.core.objects import SOPRANOError
 
 
 @pytest.mark.dependency(name="_filter_transcript_file")
@@ -338,3 +339,71 @@ def test_transform_coordinates(step_2_defs):
     prep_coords.transform_coordinates(paths)
     check_expected_content(expected_content_tmp, paths.intra_epitopes_tmp)
     check_expected_content(expected_content_tmp, paths.intra_epitopes_cds)
+
+
+class _BedFilterPaths:
+    """Just enough of Parameters for filter_bed_by_input and target_bed."""
+
+    def __init__(self, tmp_path, off_mode=True):
+        self.off_mode = off_mode
+        self.input_path = tmp_path / "input.anno"
+        self.bed_path = tmp_path / "target.bed"
+        self.filtered_bed = tmp_path / "target.bed.tmp"
+
+        # Column 5 is the transcript. Two transcripts carry mutations, one
+        # in the BED does not, and one mutated transcript is absent from it.
+        self.input_path.write_text(
+            "id1\tNA\tA\tENSG1\tENST_KEEP_A\tTranscript\tmissense_variant\n"
+            "id2\tNA\tC\tENSG2\tENST_KEEP_B\tTranscript\tsynonymous_variant\n"
+            "id3\tNA\tG\tENSG3\tENST_NOT_IN_BED\tTranscript\tmissense_variant\n"
+            "#comment line should be ignored\n"
+        )
+        self.bed_path.write_text(
+            "ENST_KEEP_A\t9\t18\n"
+            "ENST_NO_MUTATION\t1\t5\n"
+            "ENST_KEEP_B\t37\t46\n"
+            "ENST_NO_MUTATION\t7\t9\n"
+        )
+
+    @property
+    def target_bed(self):
+        return self.filtered_bed if self.off_mode else self.bed_path
+
+
+def test_filter_bed_by_input_keeps_only_mutated_transcripts(tmp_path):
+    paths = _BedFilterPaths(tmp_path)
+    prep_coords.filter_bed_by_input(paths)
+
+    kept = [
+        line.split("\t")[0]
+        for line in paths.filtered_bed.read_text().splitlines()
+    ]
+    assert kept == ["ENST_KEEP_A", "ENST_KEEP_B"]
+
+
+def test_filter_bed_by_input_raises_when_nothing_survives(tmp_path):
+    paths = _BedFilterPaths(tmp_path)
+    paths.bed_path.write_text("ENST_NO_MUTATION\t1\t5\n")
+
+    with pytest.raises(SOPRANOError):
+        prep_coords.filter_bed_by_input(paths)
+
+
+def test_target_bed_switches_with_off_mode(tmp_path):
+    """Exercise AnalysisPaths.target_bed itself, not a stub of it."""
+    from SOPRANO.core.objects import AnalysisPaths
+
+    paths = AnalysisPaths(
+        analysis_name="sample",
+        input_path=tmp_path / "input.anno",
+        bed_path=tmp_path / "target.bed",
+        cache_dir=tmp_path,
+    )
+
+    # Without off_mode the input BED is used unchanged.
+    assert paths.target_bed == paths.bed_path
+
+    # With it, the coordinate steps read the filtered BED instead.
+    paths.off_mode = True
+    assert paths.target_bed == paths.filtered_bed
+    assert paths.target_bed != paths.bed_path

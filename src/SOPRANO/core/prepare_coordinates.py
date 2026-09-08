@@ -1,6 +1,6 @@
 import pathlib
 
-from SOPRANO.core.objects import AnalysisPaths, AuxiliaryPaths, TranscriptPaths
+from SOPRANO.core.objects import SOPRANOError, AnalysisPaths, AuxiliaryPaths, TranscriptPaths
 from SOPRANO.utils.sh_utils import pipe
 
 
@@ -34,6 +34,56 @@ def _filter_transcript_file(
     )
 
 
+def filter_bed_by_input(paths) -> None:
+    """
+    Implements:
+
+    cut -f5 $FILE | sort -u | fgrep -w -f - $BED > $BED.tmp
+
+    Restrict the target BED to transcripts that carry at least one mutation in
+    the annotated input. Column 5 of the input is the Ensembl transcript
+    (VEP's Feature), and column 1 of the BED is the only place a transcript id
+    appears, so a word-matched fgrep over the line and a membership test on
+    column 1 select the same rows.
+
+    Only called in OFF mode; see AnalysisPaths.target_bed.
+
+    :param paths: Parameters instance
+    """
+    with open(paths.input_path) as handle:
+        transcripts = {
+            fields[4].strip()
+            for line in handle
+            if not line.startswith("#")
+            for fields in [line.split("\t")]
+            if len(fields) > 4
+        }
+
+    kept = 0
+    with open(paths.bed_path) as src, open(paths.filtered_bed, "w") as dst:
+        for line in src:
+            if line.split("\t")[0].strip() in transcripts:
+                dst.write(line)
+                kept += 1
+
+    if kept == 0:
+        raise SOPRANOError(
+            f"No transcripts shared between {paths.input_path} and "
+            f"{paths.bed_path}: the filtered target BED would be empty."
+        )
+
+
+def _check_not_empty(path, what: str) -> None:
+    """Abort on an empty intermediate.
+
+    MOD4OFF added these checks because an empty length file or an empty listA
+    otherwise carries silently into a meaningless dN/dS. Gated on OFF mode for
+    now so existing runs keep their current behaviour.
+    """
+    if not path.exists() or path.stat().st_size == 0:
+        raise SOPRANOError(f"File {path} is missing or empty ({what}), aborting.")
+
+
 def filter_transcript_files(
     paths: AnalysisPaths, transcripts: TranscriptPaths
 ) -> None:
@@ -44,7 +94,7 @@ def filter_transcript_files(
     :param paths: AnalysisPaths instance (contains e.g. bed_path attribute)
     :param transcripts: TranscriptsPath instance
     """
-    bed_file = paths.bed_path
+    bed_file = paths.target_bed
     transcript_protein_path = transcripts.protein_transcript_length
     transcript_path = transcripts.transcript_length
 
@@ -62,6 +112,10 @@ def filter_transcript_files(
         transcript_path,
         transcript_filt,
     )
+
+    if getattr(paths, "off_mode", False):
+        _check_not_empty(transcript_protein_filt, "filtered protein lengths")
+        _check_not_empty(transcript_filt, "filtered transcript lengths")
 
 
 def _define_excluded_regions_for_randomization(paths: AnalysisPaths):
@@ -81,11 +135,11 @@ def _define_excluded_regions_for_randomization(paths: AnalysisPaths):
     """
 
     pipe(
-        ["cut", "-f1,2,3", paths.bed_path.as_posix()],
+        ["cut", "-f1,2,3", paths.target_bed.as_posix()],
         output_path=paths.exclusions,
     )
     # cut_bed_proc = subprocess.run(
-    #     ["cut", "-f1,2,3", paths.bed_path.as_posix()], capture_output=True
+    #     ["cut", "-f1,2,3", paths.target_bed.as_posix()], capture_output=True
     # )
     #
     # process_output_to_file(
@@ -93,7 +147,7 @@ def _define_excluded_regions_for_randomization(paths: AnalysisPaths):
     # )
 
     pipe(
-        ["cut", "-f1", paths.bed_path.as_posix()],
+        ["cut", "-f1", paths.target_bed.as_posix()],
         ["awk", '{OFS="\t"}{print $1,0,2}'],
         ["sortBed", "-i", "stdin"],
         output_path=paths.exclusions,
@@ -130,7 +184,7 @@ def _sort_excluded_regions_for_randomization(
         "bedtools",
         "shuffle",
         "-i",
-        paths.bed_path.as_posix(),
+        paths.target_bed.as_posix(),
         "-g",
         paths.filtered_protein_transcript,
         "-excl",
@@ -204,7 +258,7 @@ def _randomize_with_target_file(
         "bedtools",
         "shuffle",
         "-i",
-        paths.bed_path.as_posix(),
+        paths.target_bed.as_posix(),
         "-g",
         paths.filtered_protein_transcript.as_posix(),
         "-incl",
@@ -231,7 +285,7 @@ def _non_randomized(paths: AnalysisPaths):
 
     :param paths: AnalysisPaths instance
     """
-    pipe(["sort", "-u", paths.bed_path], output_path=paths.exclusions_shuffled)
+    pipe(["sort", "-u", paths.target_bed], output_path=paths.exclusions_shuffled)
 
 
 def _exclude_positively_selected_genes_disabled(paths: AnalysisPaths):

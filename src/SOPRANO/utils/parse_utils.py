@@ -126,6 +126,21 @@ def parse_args(argv=None):
         help="If flag is used ssb192 will be used, otherwise ssb7.",
     )
     analysis_params_group.add_argument(
+        "--off_mode",
+        dest="off_mode",
+        action="store_true",
+        help=(
+            "Measure the cohort's OFF-target selection: restrict the target "
+            "BED to transcripts carrying mutations, use the >=30 amino acid "
+            "transcript length files, and suppress the p-value when there is "
+            "no intron correction. Intended with a target BED that is the "
+            "complement of the cohort's immunopeptidome intersection, in "
+            "which case the ON columns of the result are biologically the "
+            "OFF-target estimates. After "
+            "run_localSSBselection_vLOCAL_MOD4OFF.sh."
+        ),
+    )
+    analysis_params_group.add_argument(
         "--zero_ONtarget_strategy",
         dest="zero_ONtarget_strategy",
         choices=["skip"],

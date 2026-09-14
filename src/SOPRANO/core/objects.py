@@ -257,6 +257,7 @@ _NAMESPACE_KEYS = (
     "release",
     "n_samples",
     "zero_ONtarget_strategy",
+    "off_mode",
 )
 
 
@@ -541,9 +542,25 @@ class GlobalParameters:
                 f"{sorted(_NAMESPACE_KEYS)} != {sorted(input_namespace_keys)}"
             )
 
+        # OFF mode substitutes the >=30 amino acid length files, but only
+        # where the user has not named their own: the CLI defaults for these
+        # come from TranscriptPaths.defaults(), so anything else is an explicit
+        # choice and is left alone.
+        off_mode = getattr(namespace, "off_mode", False)
+        plain = TranscriptPaths.defaults()
+        min30 = TranscriptPaths.defaults(min30=True)
+
+        transcript = namespace.transcript
+        protein_transcript = namespace.protein_transcript
+        if off_mode:
+            if transcript == plain.transcript_length:
+                transcript = min30.transcript_length
+            if protein_transcript == plain.protein_transcript_length:
+                protein_transcript = min30.protein_transcript_length
+
         transcripts = TranscriptPaths(
-            namespace.transcript,
-            namespace.protein_transcript,
+            transcript,
+            protein_transcript,
             namespace.transcript_ids,
         )
 
@@ -578,6 +595,7 @@ class GlobalParameters:
             genomes=genomes,
             n_samples=n_samples,
             zero_ONtarget_strategy=namespace.zero_ONtarget_strategy,
+            off_mode=off_mode,
         )
 
     def get_data(self):

@@ -474,7 +474,13 @@ def _compute_coverage(paths: AnalysisPaths):
         "OFF_High_CI",
     ):
         _numeric = pd.to_numeric(results_df[_col], errors="coerce")
-        results_df.loc[~np.isfinite(_numeric), _col] = "NA"
+        _unestimable = ~np.isfinite(_numeric)
+        if _unestimable.any():
+            # Cast first: pandas >= 3 refuses to write a string into a
+            # float64 column in place, where 2.x silently upcast. The
+            # container ships 3.x, so the permissive path is not enough.
+            results_df[_col] = results_df[_col].astype(object)
+            results_df.loc[_unestimable, _col] = "NA"
 
     print(f"Exporting results to {paths.results_path}:")
     print(results_df)

@@ -13,6 +13,10 @@ ensembl_downloads/**
 !ensembl_downloads/
 !ensembl_downloads/.gitkeep
 
+# Reference material from collaborators — never belongs in a published image.
+beatriz-soprano-hd-code
+soprano-hd-primer.html
+
 # Docs / dev metadata not needed at runtime
 docs
 mkdocs.yml

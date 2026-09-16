@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 import SOPRANO.core.dnds as dnds
@@ -131,7 +132,9 @@ def test__compute_conf_interval():
 class _CoveragePaths:
     """Just enough of AnalysisPaths for _compute_coverage to run for real."""
 
-    def __init__(self, tmp_path, off_mode, with_intron):
+    def __init__(
+        self, tmp_path, off_mode, with_intron, intra_synonymous=True
+    ):
         self.off_mode = off_mode
         self.data_epitopes = tmp_path / "data_epitopes"
         self.epitope_nans = tmp_path / "epitope_nans"
@@ -144,7 +147,11 @@ class _CoveragePaths:
             "ENST00000000233\t2\textra_missense_variant\n"
             "ENST00000000233\t4\textra_synonymous_variant\n"
             "ENST00000000233\t6\tintra_missense_variant\n"
-            "ENST00000000233\t8\tintra_synonymous_variant\n"
+            + (
+                "ENST00000000233\t8\tintra_synonymous_variant\n"
+                if intra_synonymous
+                else ""
+            )
         )
         self.epitope_nans.write_text("1000\t2000\n")
         self.intra_epitope_nans.write_text("3000\t4000\n")
@@ -155,8 +162,10 @@ class _CoveragePaths:
         )
 
 
-def _run_coverage(tmp_path, off_mode, with_intron):
-    paths = _CoveragePaths(tmp_path, off_mode, with_intron)
+def _run_coverage(tmp_path, off_mode, with_intron, intra_synonymous=True):
+    paths = _CoveragePaths(
+        tmp_path, off_mode, with_intron, intra_synonymous
+    )
     dnds._compute_coverage(paths)
     return pd.read_csv(paths.results_path, sep="\t", keep_default_na=False)
 
@@ -182,3 +191,39 @@ def test_pvalue_unaffected_outside_off_mode(tmp_path):
         sub.mkdir()
         df = _run_coverage(sub, off_mode=False, with_intron=with_intron)
         assert "NA" not in list(df["Pvalue"])
+
+
+def test_unestimable_dnds_reported_as_na_not_inf(tmp_path):
+    """Zero synonymous mutations off target: the ratio divides by zero.
+
+    The shell never prints inf here because complementBed dies on an orphan
+    transcript first and leaves every OFF_* column NA. Agreed with Beatriz
+    Monterde 2026-09-16 that NA is what we emit too.
+    """
+    df = _run_coverage(
+        tmp_path, off_mode=True, with_intron=False, intra_synonymous=False
+    )
+    assert list(df["OFF_dNdS"]) == ["NA"]
+    assert list(df["OFF_Low_CI"]) == ["NA"]
+    assert list(df["OFF_High_CI"]) == ["NA"]
+
+
+def test_unestimable_dnds_keeps_the_underlying_counts(tmp_path):
+    """Only the ratios are blanked; the measured counts and sites survive."""
+    df = _run_coverage(
+        tmp_path, off_mode=True, with_intron=False, intra_synonymous=False
+    )
+    # Column 2 of data_epitopes is a count, so the missense line contributes
+    # 6, and dropping the synonymous line leaves that class at 0.
+    assert int(df["OFF_na"].iloc[0]) == 6
+    assert int(df["OFF_ns"].iloc[0]) == 0
+    assert float(df["OFF_NA"].iloc[0]) > 0
+    assert float(df["OFF_NS"].iloc[0]) > 0
+
+
+def test_estimable_dnds_left_alone(tmp_path):
+    """The guard must not touch a run where both sides are estimable."""
+    df = _run_coverage(tmp_path, off_mode=True, with_intron=False)
+    for col in ("ON_dNdS", "ON_Low_CI", "ON_High_CI", "OFF_dNdS"):
+        assert "NA" not in list(df[col])
+        assert all(np.isfinite(float(v)) for v in df[col])

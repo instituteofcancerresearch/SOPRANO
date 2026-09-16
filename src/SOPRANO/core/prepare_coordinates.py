@@ -51,7 +51,7 @@ def filter_bed_by_input(paths) -> None:
     :param paths: Parameters instance
     """
     with open(paths.input_path) as handle:
-        transcripts = {
+        mutated = {
             fields[4].strip()
             for line in handle
             if not line.startswith("#")
@@ -59,17 +59,46 @@ def filter_bed_by_input(paths) -> None:
             if len(fields) > 4
         }
 
+    # Also require a transcript length, or bedtools has no such "chromosome"
+    # later on. The length files are themselves filtered from this BED, so
+    # without this the two disagree: in OFF mode the lengths come from the
+    # min30 files, and any transcript shorter than the cutoff is dropped there
+    # while remaining here. complementBed then exits on the first orphan.
+    #
+    # The shell pipeline has the same gap. It survives it because nothing
+    # checks bedtools' exit status, so the run continues with an empty
+    # intra_epitopes file and reports NA for every OFF_* column -- visible in
+    # Beatriz Monterde's own MISSONI_OFF output. Confirmed with her
+    # 2026-09-15: filtering the target BED to transcripts that survive min30
+    # is the intended fix.
+    with open(paths.transcripts.protein_transcript_length) as handle:
+        have_length = {
+            line.split("\t")[0].strip() for line in handle if line.strip()
+        }
+
+    keep = mutated & have_length
+
     kept = 0
     with open(paths.bed_path) as src, open(paths.filtered_bed, "w") as dst:
         for line in src:
-            if line.split("\t")[0].strip() in transcripts:
+            if line.split("\t")[0].strip() in keep:
                 dst.write(line)
                 kept += 1
 
+    dropped = len(mutated - have_length)
+    if dropped:
+        print(
+            f"{dropped} transcripts carry mutations but have no entry in "
+            f"{paths.transcripts.protein_transcript_length.name}; excluded "
+            f"from the target region."
+        )
+
     if kept == 0:
         raise SOPRANOError(
-            f"No transcripts shared between {paths.input_path} and "
-            f"{paths.bed_path}: the filtered target BED would be empty."
+            f"No transcripts shared between {paths.input_path}, "
+            f"{paths.bed_path} and "
+            f"{paths.transcripts.protein_transcript_length}: the filtered "
+            f"target BED would be empty."
         )
 
 

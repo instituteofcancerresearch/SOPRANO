@@ -3,6 +3,8 @@ from _step2_fixtures import mock_bed_content, tab_line
 from _test_utils import check_expected_content
 
 import SOPRANO.core.prepare_coordinates as prep_coords
+from types import SimpleNamespace
+
 from SOPRANO.core.objects import SOPRANOError
 
 
@@ -365,12 +367,24 @@ class _BedFilterPaths:
             "ENST_NO_MUTATION\t7\t9\n"
         )
 
+        # A length file standing in for the min30 one. ENST_KEEP_B is absent,
+        # so it must be excluded from the target BED even though it carries a
+        # mutation -- otherwise bedtools has no such "chromosome" downstream.
+        self.lengths = tmp_path / "protein.length"
+        self.lengths.write_text(
+            "ENST_KEEP_A\t120\nENST_NO_MUTATION\t200\n"
+        )
+        self.transcripts = SimpleNamespace(
+            protein_transcript_length=self.lengths
+        )
+
     @property
     def target_bed(self):
         return self.filtered_bed if self.off_mode else self.bed_path
 
 
 def test_filter_bed_by_input_keeps_only_mutated_transcripts(tmp_path):
+    """Mutated AND present in the length file in use."""
     paths = _BedFilterPaths(tmp_path)
     prep_coords.filter_bed_by_input(paths)
 
@@ -378,7 +392,27 @@ def test_filter_bed_by_input_keeps_only_mutated_transcripts(tmp_path):
         line.split("\t")[0]
         for line in paths.filtered_bed.read_text().splitlines()
     ]
-    assert kept == ["ENST_KEEP_A", "ENST_KEEP_B"]
+    # ENST_KEEP_B is mutated but has no length entry, so it goes.
+    assert kept == ["ENST_KEEP_A"]
+
+
+def test_filter_bed_by_input_leaves_no_orphans(tmp_path):
+    """Every transcript in the target BED must have a length entry.
+
+    This is what the shell pipeline gets wrong: complementBed exits on the
+    first transcript it cannot find, and the run continues regardless.
+    """
+    paths = _BedFilterPaths(tmp_path)
+    prep_coords.filter_bed_by_input(paths)
+
+    in_bed = {
+        line.split("\t")[0]
+        for line in paths.filtered_bed.read_text().splitlines()
+    }
+    have_length = {
+        line.split("\t")[0] for line in paths.lengths.read_text().splitlines()
+    }
+    assert in_bed <= have_length
 
 
 def test_filter_bed_by_input_raises_when_nothing_survives(tmp_path):

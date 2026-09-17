@@ -96,6 +96,13 @@ tmp/
 # Personal dir testing
 pp_evo2/*
 data/*
+# ...but data/aux_soprano holds tracked reference files, and the blanket rule
+# above -- added for scratch directories -- would stop new ones being added.
+# Re-include the directory, re-ignore its contents, then name what belongs in
+# git. Files already tracked are unaffected by any of this.
+!data/aux_soprano/
+data/aux_soprano/*
+!data/aux_soprano/*.length
 zz_beatriz/*
 pp_evo/*
 tmp2/*

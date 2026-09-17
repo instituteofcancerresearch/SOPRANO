@@ -71,3 +71,72 @@ def test_parse_args(capsys, tmp_path):
 
         # Defaults... TODO: Improve!
         assert args.n_samples == 0
+
+
+def _run_argv(tmp_path, *extra):
+    """Minimal valid argv for parse_args; every path it takes must exist."""
+    anno = tmp_path / "in.anno"; anno.touch()
+    bed = tmp_path / "target.bed"; bed.touch()
+    return [
+        "-i", anno.as_posix(),
+        "-b", bed.as_posix(),
+        "-o", tmp_path.as_posix(),
+        "-n", "sample",
+        *extra,
+    ]
+
+
+def test_off_mode_defaults_off(tmp_path):
+    from SOPRANO.utils import parse_utils
+
+    ns = parse_utils.parse_args(_run_argv(tmp_path))
+    assert ns.off_mode is False
+
+
+def test_off_mode_flag_sets_it(tmp_path):
+    from SOPRANO.utils import parse_utils
+
+    ns = parse_utils.parse_args(_run_argv(tmp_path, "--off_mode"))
+    assert ns.off_mode is True
+
+
+def test_off_mode_selects_the_min30_length_files(tmp_path):
+    """The whole point of the flag reaching GlobalParameters."""
+    from SOPRANO.core import objects
+    from SOPRANO.utils import parse_utils
+
+    plain = objects.TranscriptPaths.defaults()
+    min30 = objects.TranscriptPaths.defaults(min30=True)
+
+    # Separate directories: GlobalParameters caches its parameters and
+    # refuses to reuse a directory whose cached run differs -- off_mode
+    # included, which is itself worth knowing.
+    on_dir = tmp_path / "on"; on_dir.mkdir()
+    off_dir = tmp_path / "off"; off_dir.mkdir()
+
+    ns_on = parse_utils.parse_args(_run_argv(on_dir, "--off_mode"))
+    params_on = objects.GlobalParameters.from_namespace(ns_on)
+    assert params_on.off_mode is True
+    assert params_on.transcripts.transcript_length == min30.transcript_length
+    assert (
+        params_on.transcripts.protein_transcript_length
+        == min30.protein_transcript_length
+    )
+
+    ns_off = parse_utils.parse_args(_run_argv(off_dir))
+    params_off = objects.GlobalParameters.from_namespace(ns_off)
+    assert params_off.off_mode is False
+    assert params_off.transcripts.transcript_length == plain.transcript_length
+
+
+def test_explicit_transcript_paths_survive_off_mode(tmp_path):
+    """A path the user named is theirs, mode or no mode."""
+    from SOPRANO.core import objects
+    from SOPRANO.utils import parse_utils
+
+    mine = tmp_path / "my_own.length"; mine.touch()
+    ns = parse_utils.parse_args(
+        _run_argv(tmp_path, "--off_mode", "-t", mine.as_posix())
+    )
+    params = objects.GlobalParameters.from_namespace(ns)
+    assert params.transcripts.transcript_length == mine

@@ -92,7 +92,13 @@ WORKDIR /opt/soprano
 
 # Conda env (rebuilt only when env.yml changes).
 COPY env.yml /opt/soprano/env.yml
-RUN micromamba create -y -n soprano -f /opt/soprano/env.yml \
+# Retries/backoff scoped to this command: anaconda.org stalls often enough that
+# a single slow package fails an hour-long multi-arch build. Not exported, so
+# the runtime image env is unchanged.
+RUN MAMBA_REMOTE_MAX_RETRIES=5 \
+    MAMBA_REMOTE_BACKOFF_FACTOR=2 \
+    MAMBA_REMOTE_CONNECT_TIMEOUT_SECS=60 \
+    micromamba create -y -n soprano -f /opt/soprano/env.yml \
  && micromamba clean -a -y
 
 # R packages (rebuilt only when install_R_pkgs.R changes).

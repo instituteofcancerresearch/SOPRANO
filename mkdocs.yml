@@ -9,6 +9,7 @@ nav:
         - Inputs: cli/soprano-run/inputs.md
         - Outputs: cli/soprano-run/outputs.md
         - Examples: cli/soprano-run/examples.md
+        - OFF mode: cli/soprano-run/off_mode.md
       - soprano-annotate: cli/soprano-annotate.md
       - soprano-get-genome: cli/soprano-get-genome.md
       - soprano-hla2ip: cli/soprano-hla2ip.md

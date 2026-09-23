@@ -581,6 +581,16 @@ def run_pipeline(params: Parameters):
     jobs.append(BuildProteinComplement())
     jobs.append(PrepSSBSelection())
     jobs.append(BuildIntraEpitopesCDS())
+    # Counting comes before the rate-parameter chain below, so that a sample
+    # with too few mutations to fit substitution rates still reports how many
+    # of its mutations fall in the target region. The counts read the
+    # annotated input and the epitope BEDs built just above; nothing in them
+    # consumes the triplet counts or site corrections, which feed only dN/dS.
+    jobs.append(GetSilentCounts())
+    jobs.append(GetNonSilentCounts())
+    jobs.append(GetMissenseCounts())
+    jobs.append(GetIntronicCounts())
+    jobs.append(OnOffCounts())
     jobs.append(ObtainFastaRegions())
     jobs.append(GetTranscriptRegionsForSites())
     jobs.append(ComputeTheoreticalSubs())
@@ -592,11 +602,6 @@ def run_pipeline(params: Parameters):
     jobs.append(TripletCounts())
     jobs.append(SiteCorrections())
     jobs.append(IntersectByFrequency())
-    jobs.append(GetSilentCounts())
-    jobs.append(GetNonSilentCounts())
-    jobs.append(GetMissenseCounts())
-    jobs.append(GetIntronicCounts())
-    jobs.append(OnOffCounts())
     jobs.append(BuildEpitopesDataFile())
     jobs.append(CheckTargetMutations())
     jobs.append(ComputeIntronRate())

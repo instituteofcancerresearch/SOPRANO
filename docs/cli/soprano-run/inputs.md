@@ -74,3 +74,7 @@ to the CLI, this overrides the selection to `use_random` to `True`.
 `--keep_drivers`
 :   Run SOPRANO with driver genes included. Otherwise,
 `data/aux_soprano/genes2exclude.txt` are excluded.
+
+`--off_mode`
+:   Measure a cohort's OFF-target selection. See
+[OFF mode](off_mode.md) for what this changes and when to use it.

@@ -40,13 +40,26 @@ class TranscriptPaths:
     transcript_fasta: pathlib.Path
 
     @classmethod
-    def defaults(cls):
+    def defaults(cls, min30: bool = False):
+        """Default auxiliary transcript files.
+
+        :param min30: use the length files restricted to transcripts of at
+            least 30 amino acids. Beatriz Monterde's OFF-mode variant of the
+            shell pipeline substitutes these for the unfiltered files:
+
+                cut -f1 $BED.tmp | sort -u |
+                    fgrep -w -f - $SUPA/ensemble_transcript_protein_min30.length
+
+            Opt in explicitly rather than deriving it from the mode, so the
+            substitution is visible at the call site.
+        """
+        suffix = "_min30" if min30 else ""
         return cls(
             transcript_length=Directories.soprano_aux_files(
-                "ensemble_transcript.length"
+                f"ensemble_transcript{suffix}.length"
             ),
             protein_transcript_length=Directories.soprano_aux_files(
-                "ensemble_transcript_protein.length"
+                f"ensemble_transcript_protein{suffix}.length"
             ),
             transcript_fasta=Directories.soprano_aux_files(
                 "ensemble_transcriptID.fasta"
@@ -101,6 +114,10 @@ class AnalysisPaths:
         self.bed_path = bed_path
         self.random_regions_path = random_regions
         self.cache_dir = cache_dir
+
+        # Target BED restricted to transcripts carrying mutations. Written
+        # only in OFF mode; see target_bed below.
+        self.filtered_bed = self._cached_path("bed", "tmp")
 
         # Transcripts
         self.filtered_protein_transcript = self._cached_path(
@@ -196,6 +213,21 @@ class AnalysisPaths:
 
         self.log_path = self._cached_path("log")
 
+    @property
+    def target_bed(self) -> pathlib.Path:
+        """The BED the coordinate steps operate on.
+
+        In OFF mode this is the input BED restricted to transcripts that carry
+        mutations, mirroring run_localSSBselection_vLOCAL_MOD4OFF.sh, which
+        writes $BED.tmp once and then substitutes it for $BED at every
+        subsequent use -- length filtering, exclusion regions, both shuffle
+        branches and the non-randomised path. Outside OFF mode it is the input
+        BED unchanged.
+        """
+        if getattr(self, "off_mode", False):
+            return self.filtered_bed
+        return self.bed_path
+
     def _cached_path(self, *extensions):
         file_name = f"{self.analysis_name}"
 
@@ -225,6 +257,7 @@ _NAMESPACE_KEYS = (
     "release",
     "n_samples",
     "zero_ONtarget_strategy",
+    "off_mode",
 )
 
 
@@ -269,6 +302,7 @@ class Parameters(AnalysisPaths):
         transcripts: TranscriptPaths,
         genomes: GenomePaths,
         zero_ONtarget_strategy: ZeroONTargetStrategy = "skip",
+        off_mode: bool = False,
     ):
         super().__init__(
             analysis_name, input_path, bed_path, cache_dir, random_regions
@@ -289,6 +323,13 @@ class Parameters(AnalysisPaths):
         self.seed = seed
         self.logger = init_logger(self.analysis_name, self.log_path)
         self.zero_ONtarget_strategy = zero_ONtarget_strategy
+
+        # OFF mode, after run_localSSBselection_vLOCAL_MOD4OFF.sh. The cohort's
+        # OFF-target selection is measured by running SOPRANO against the
+        # complement of the immunopeptidome intersection, so this run's ON
+        # columns are biologically the cohort's OFF-target estimates. See
+        # docs/OFF_mode.md in luisgls/SOPRANO, branch fix_issue_3.
+        self.off_mode = off_mode
 
         self.log("parameters initialized")
 
@@ -311,6 +352,7 @@ class GlobalParameters:
         genomes: GenomePaths,
         n_samples: int,
         zero_ONtarget_strategy: ZeroONTargetStrategy = "skip",
+        off_mode: bool = False,
     ):
         # Sanitized
         self.job_cache = check_cache_path(job_cache, analysis_name)
@@ -326,6 +368,13 @@ class GlobalParameters:
         self.genomes = genomes
         self.n_samples = n_samples
         self.zero_ONtarget_strategy = zero_ONtarget_strategy
+
+        # OFF mode, after run_localSSBselection_vLOCAL_MOD4OFF.sh. The cohort's
+        # OFF-target selection is measured by running SOPRANO against the
+        # complement of the immunopeptidome intersection, so this run's ON
+        # columns are biologically the cohort's OFF-target estimates. See
+        # docs/OFF_mode.md in luisgls/SOPRANO, branch fix_issue_3.
+        self.off_mode = off_mode
 
         self.get_all_samples(_init=True)
         self.cache_ordered_params()
@@ -493,9 +542,25 @@ class GlobalParameters:
                 f"{sorted(_NAMESPACE_KEYS)} != {sorted(input_namespace_keys)}"
             )
 
+        # OFF mode substitutes the >=30 amino acid length files, but only
+        # where the user has not named their own: the CLI defaults for these
+        # come from TranscriptPaths.defaults(), so anything else is an explicit
+        # choice and is left alone.
+        off_mode = getattr(namespace, "off_mode", False)
+        plain = TranscriptPaths.defaults()
+        min30 = TranscriptPaths.defaults(min30=True)
+
+        transcript = namespace.transcript
+        protein_transcript = namespace.protein_transcript
+        if off_mode:
+            if transcript == plain.transcript_length:
+                transcript = min30.transcript_length
+            if protein_transcript == plain.protein_transcript_length:
+                protein_transcript = min30.protein_transcript_length
+
         transcripts = TranscriptPaths(
-            namespace.transcript,
-            namespace.protein_transcript,
+            transcript,
+            protein_transcript,
             namespace.transcript_ids,
         )
 
@@ -530,6 +595,7 @@ class GlobalParameters:
             genomes=genomes,
             n_samples=n_samples,
             zero_ONtarget_strategy=namespace.zero_ONtarget_strategy,
+            off_mode=off_mode,
         )
 
     def get_data(self):

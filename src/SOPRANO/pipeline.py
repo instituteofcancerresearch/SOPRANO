@@ -43,6 +43,7 @@ from SOPRANO.core.prepare_coordinates import (
     _prep_ssb192,
     _randomize_with_target_file,
     _sort_excluded_regions_for_randomization,
+    filter_bed_by_input,
     filter_transcript_files,
     transform_coordinates,
 )
@@ -91,6 +92,12 @@ class FilterTranscripts(_PipelineComponent):
     tag = "filter_transcripts"
 
     def _apply(self, params: Parameters):
+        # In OFF mode the target BED is first restricted to transcripts that
+        # carry mutations, and everything downstream reads params.target_bed.
+        # MOD4OFF does this once, before the length files are filtered.
+        if getattr(params, "off_mode", False):
+            filter_bed_by_input(params)
+
         filter_transcript_files(params, params.transcripts)
 
     def check_ready(self, params: Parameters):

@@ -443,6 +443,45 @@ def _compute_coverage(paths: AnalysisPaths):
 
         # NOTE: ON/OFF_NS appear sensitive to the reference genome release!
 
+    # OFF mode drops the p-value, but only without intron correction. The
+    # shell's calculateKaKsEpiCorrected_CI_mod4OFF.R prints the literal "NA"
+    # in that column and leaves estimate_pval defined but uncalled, whereas
+    # calculateKaKsEpiCorrected_CI_intron_V3_mod4OFF.R still prints both
+    # p-values. So this applies exactly when there is no Exonic_Intronic row.
+    #
+    # The literal string, rather than NaN, so the file matches the shell's
+    # output when the two are diffed; pandas reads it back as NaN either way.
+    if getattr(paths, "off_mode", False) and "mutsintron" not in mut_counts:
+        results_df["Pvalue"] = "NA"
+
+    # A dN/dS with no synonymous mutations in its region is unestimable: the
+    # ratio divides by zero, so numpy yields +/-inf for the estimate and nan
+    # for at least one confidence bound. The counts and site totals stay as
+    # computed -- they are real measurements -- and only the ratios derived
+    # from them are blanked, so nothing is thrown away.
+    #
+    # The shell reaches the same case but never prints inf, because
+    # complementBed fails on an orphan transcript first and every OFF_*
+    # column ends up NA. "NA" therefore also matches Beatriz Monterde's
+    # outputs; agreed with her 2026-09-16. Literal string, as with Pvalue
+    # above, so the file diffs cleanly against the shell's.
+    for _col in (
+        "ON_dNdS",
+        "ON_Low_CI",
+        "ON_High_CI",
+        "OFF_dNdS",
+        "OFF_Low_CI",
+        "OFF_High_CI",
+    ):
+        _numeric = pd.to_numeric(results_df[_col], errors="coerce")
+        _unestimable = ~np.isfinite(_numeric)
+        if _unestimable.any():
+            # Cast first: pandas >= 3 refuses to write a string into a
+            # float64 column in place, where 2.x silently upcast. The
+            # container ships 3.x, so the permissive path is not enough.
+            results_df[_col] = results_df[_col].astype(object)
+            results_df.loc[_unestimable, _col] = "NA"
+
     print(f"Exporting results to {paths.results_path}:")
     print(results_df)
     results_df.to_csv(paths.results_path, sep="\t", index=False)

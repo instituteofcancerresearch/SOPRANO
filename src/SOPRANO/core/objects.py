@@ -4,7 +4,7 @@ import pathlib
 import warnings
 from argparse import Namespace
 from dataclasses import dataclass
-from typing import Set
+from typing import Literal, Set
 
 import pandas as pd
 
@@ -28,6 +28,10 @@ from SOPRANO.utils.url_utils import (
     find_latest_release,
 )
 
+ZeroONTargetStrategy = Literal[
+    "skip"
+]  # , "retry"] #removing retry for the moment
+
 
 @dataclass(frozen=True)
 class TranscriptPaths:
@@ -36,13 +40,26 @@ class TranscriptPaths:
     transcript_fasta: pathlib.Path
 
     @classmethod
-    def defaults(cls):
+    def defaults(cls, min30: bool = False):
+        """Default auxiliary transcript files.
+
+        :param min30: use the length files restricted to transcripts of at
+            least 30 amino acids. Beatriz Monterde's OFF-mode variant of the
+            shell pipeline substitutes these for the unfiltered files:
+
+                cut -f1 $BED.tmp | sort -u |
+                    fgrep -w -f - $SUPA/ensemble_transcript_protein_min30.length
+
+            Opt in explicitly rather than deriving it from the mode, so the
+            substitution is visible at the call site.
+        """
+        suffix = "_min30" if min30 else ""
         return cls(
             transcript_length=Directories.soprano_aux_files(
-                "ensemble_transcript.length"
+                f"ensemble_transcript{suffix}.length"
             ),
             protein_transcript_length=Directories.soprano_aux_files(
-                "ensemble_transcript_protein.length"
+                f"ensemble_transcript_protein{suffix}.length"
             ),
             transcript_fasta=Directories.soprano_aux_files(
                 "ensemble_transcriptID.fasta"
@@ -97,6 +114,10 @@ class AnalysisPaths:
         self.bed_path = bed_path
         self.random_regions_path = random_regions
         self.cache_dir = cache_dir
+
+        # Target BED restricted to transcripts carrying mutations. Written
+        # only in OFF mode; see target_bed below.
+        self.filtered_bed = self._cached_path("bed", "tmp")
 
         # Transcripts
         self.filtered_protein_transcript = self._cached_path(
@@ -192,6 +213,21 @@ class AnalysisPaths:
 
         self.log_path = self._cached_path("log")
 
+    @property
+    def target_bed(self) -> pathlib.Path:
+        """The BED the coordinate steps operate on.
+
+        In OFF mode this is the input BED restricted to transcripts that carry
+        mutations, mirroring run_localSSBselection_vLOCAL_MOD4OFF.sh, which
+        writes $BED.tmp once and then substitutes it for $BED at every
+        subsequent use -- length filtering, exclusion regions, both shuffle
+        branches and the non-randomised path. Outside OFF mode it is the input
+        BED unchanged.
+        """
+        if getattr(self, "off_mode", False):
+            return self.filtered_bed
+        return self.bed_path
+
     def _cached_path(self, *extensions):
         file_name = f"{self.analysis_name}"
 
@@ -220,6 +256,8 @@ _NAMESPACE_KEYS = (
     "assembly",
     "release",
     "n_samples",
+    "zero_ONtarget_strategy",
+    "off_mode",
 )
 
 
@@ -228,8 +266,7 @@ def check_cache_path(cache_dir: pathlib.Path, name: str) -> pathlib.Path:
         job_cache = cache_dir.joinpath(name)
         job_cache.mkdir(exist_ok=True)
         return job_cache
-    else:
-        raise NotADirectoryError(cache_dir)
+    raise NotADirectoryError(cache_dir)
 
 
 def init_logger(name: str, log_path: pathlib.Path):
@@ -264,10 +301,18 @@ class Parameters(AnalysisPaths):
         seed: int | None,
         transcripts: TranscriptPaths,
         genomes: GenomePaths,
+        zero_ONtarget_strategy: ZeroONTargetStrategy = "skip",
+        off_mode: bool = False,
     ):
         super().__init__(
             analysis_name, input_path, bed_path, cache_dir, random_regions
         )
+
+        if zero_ONtarget_strategy not in {"skip"}:
+            raise ValueError(
+                "zero_ONtarget_strategy must be one of {'skip'}, "
+                f"got {zero_ONtarget_strategy!r}"
+            )
 
         self.transcripts = transcripts
         self.genomes = genomes
@@ -277,6 +322,14 @@ class Parameters(AnalysisPaths):
         self.exclude_drivers = exclude_drivers
         self.seed = seed
         self.logger = init_logger(self.analysis_name, self.log_path)
+        self.zero_ONtarget_strategy = zero_ONtarget_strategy
+
+        # OFF mode, after run_localSSBselection_vLOCAL_MOD4OFF.sh. The cohort's
+        # OFF-target selection is measured by running SOPRANO against the
+        # complement of the immunopeptidome intersection, so this run's ON
+        # columns are biologically the cohort's OFF-target estimates. See
+        # docs/OFF_mode.md in luisgls/SOPRANO, branch fix_issue_3.
+        self.off_mode = off_mode
 
         self.log("parameters initialized")
 
@@ -298,6 +351,8 @@ class GlobalParameters:
         transcripts: TranscriptPaths,
         genomes: GenomePaths,
         n_samples: int,
+        zero_ONtarget_strategy: ZeroONTargetStrategy = "skip",
+        off_mode: bool = False,
     ):
         # Sanitized
         self.job_cache = check_cache_path(job_cache, analysis_name)
@@ -312,6 +367,14 @@ class GlobalParameters:
         self.transcripts = transcripts
         self.genomes = genomes
         self.n_samples = n_samples
+        self.zero_ONtarget_strategy = zero_ONtarget_strategy
+
+        # OFF mode, after run_localSSBselection_vLOCAL_MOD4OFF.sh. The cohort's
+        # OFF-target selection is measured by running SOPRANO against the
+        # complement of the immunopeptidome intersection, so this run's ON
+        # columns are biologically the cohort's OFF-target estimates. See
+        # docs/OFF_mode.md in luisgls/SOPRANO, branch fix_issue_3.
+        self.off_mode = off_mode
 
         self.get_all_samples(_init=True)
         self.cache_ordered_params()
@@ -415,18 +478,20 @@ class GlobalParameters:
                         [joined_df, pd.read_csv(path, sep="\t")],
                         ignore_index=True,
                     )
-
                 f.write(f"{path.as_posix()}\n")
 
-        # Dropped estimateed statistics... don't mean much in this context
-        joined_df.drop(
+        assert joined_df is not None  # for type checkers
+
+        # Dropped estimated statistics... don't mean much in this context
+        joined_df = joined_df.drop(
             columns=[
                 "ON_Low_CI",
                 "ON_High_CI",
                 "OFF_Low_CI",
                 "OFF_High_CI",
                 "Pvalue",
-            ]
+            ],
+            errors="ignore",
         )
 
         joined_df.to_csv(self.samples_path)
@@ -477,9 +542,25 @@ class GlobalParameters:
                 f"{sorted(_NAMESPACE_KEYS)} != {sorted(input_namespace_keys)}"
             )
 
+        # OFF mode substitutes the >=30 amino acid length files, but only
+        # where the user has not named their own: the CLI defaults for these
+        # come from TranscriptPaths.defaults(), so anything else is an explicit
+        # choice and is left alone.
+        off_mode = getattr(namespace, "off_mode", False)
+        plain = TranscriptPaths.defaults()
+        min30 = TranscriptPaths.defaults(min30=True)
+
+        transcript = namespace.transcript
+        protein_transcript = namespace.protein_transcript
+        if off_mode:
+            if transcript == plain.transcript_length:
+                transcript = min30.transcript_length
+            if protein_transcript == plain.protein_transcript_length:
+                protein_transcript = min30.protein_transcript_length
+
         transcripts = TranscriptPaths(
-            namespace.transcript,
-            namespace.protein_transcript,
+            transcript,
+            protein_transcript,
             namespace.transcript_ids,
         )
 
@@ -513,6 +594,8 @@ class GlobalParameters:
             transcripts=transcripts,
             genomes=genomes,
             n_samples=n_samples,
+            zero_ONtarget_strategy=namespace.zero_ONtarget_strategy,
+            off_mode=off_mode,
         )
 
     def get_data(self):
@@ -528,7 +611,7 @@ class GlobalParameters:
         sample_seed = self.seed + idx if idx > -1 else None
         subdir_name = "data" if idx == -1 else "sample_%04d" % idx
         sample_cache = self.job_cache / subdir_name
-        use_random = idx > -1
+        use_random = idx > -1  # use random set internally
 
         if _init:
             if COMM.Get_rank() == 0:
@@ -546,6 +629,8 @@ class GlobalParameters:
         sample_kwargs["cache_dir"] = sample_cache
         sample_kwargs["analysis_name"] = subdir_name
         sample_kwargs["use_random"] = use_random
+        # TODO: clean once validated. I think no need to copy it here as it is already include
+        # sample_kwargs["zero_ONtarget_strategy"] = self.zero_ONtarget_strategy
 
         return Parameters(**sample_kwargs)
 
@@ -554,7 +639,6 @@ class GlobalParameters:
             self.get_sample(idx, _init=_init)
             for idx in range(-1, self.n_samples)
         ]
-
         if not _init:
             return [s for s in samples if not s.is_complete()]
 
